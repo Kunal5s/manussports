@@ -7,7 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDown, ArrowUp, DollarSign } from 'lucide-react';
 
 const AdminWallet: React.FC = () => {
-  const { walletBalance, transactions, withdrawals } = useData();
+  const { walletBalance, earnings, withdrawals } = useData();
+
+  // Calculate total earnings
+  const totalEarnings = earnings.reduce((total, earning) => total + earning.amount, 0);
+  
+  // Calculate total withdrawals
+  const totalWithdrawals = withdrawals.reduce((total, withdrawal) => total + withdrawal.amount, 0);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -31,7 +37,7 @@ const AdminWallet: React.FC = () => {
               <CardDescription>Total Earnings</CardDescription>
               <CardTitle className="text-3xl flex items-center text-green-600">
                 <ArrowUp className="h-6 w-6 mr-1" />
-                $1,245.00
+                ${totalEarnings.toFixed(2)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -41,7 +47,7 @@ const AdminWallet: React.FC = () => {
               <CardDescription>Total Withdrawals</CardDescription>
               <CardTitle className="text-3xl flex items-center text-blue-600">
                 <ArrowDown className="h-6 w-6 mr-1" />
-                $850.00
+                ${totalWithdrawals.toFixed(2)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -67,29 +73,26 @@ const AdminWallet: React.FC = () => {
                       <tr className="border-b bg-gray-50">
                         <th className="px-4 py-3 text-left font-medium">Date</th>
                         <th className="px-4 py-3 text-left font-medium">Article</th>
-                        <th className="px-4 py-3 text-left font-medium">Views</th>
                         <th className="px-4 py-3 text-right font-medium">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b">
-                        <td className="px-4 py-3">May 12, 2023</td>
-                        <td className="px-4 py-3">Top 10 Football Moments of 2023</td>
-                        <td className="px-4 py-3">156</td>
-                        <td className="px-4 py-3 text-right text-green-600">+$78.00</td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="px-4 py-3">May 10, 2023</td>
-                        <td className="px-4 py-3">The Rise of Basketball in Europe</td>
-                        <td className="px-4 py-3">98</td>
-                        <td className="px-4 py-3 text-right text-green-600">+$49.00</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3">May 8, 2023</td>
-                        <td className="px-4 py-3">Cricket World Cup Preview</td>
-                        <td className="px-4 py-3">212</td>
-                        <td className="px-4 py-3 text-right text-green-600">+$106.00</td>
-                      </tr>
+                      {earnings.length > 0 ? (
+                        earnings.map((earning) => {
+                          const article = useData().getArticleById(earning.articleId);
+                          return (
+                            <tr key={earning.id} className="border-b">
+                              <td className="px-4 py-3">{new Date(earning.date).toLocaleDateString()}</td>
+                              <td className="px-4 py-3">{article?.title || 'Unknown Article'}</td>
+                              <td className="px-4 py-3 text-right text-green-600">+${earning.amount.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-3 text-center text-gray-500">No earnings recorded yet</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -115,18 +118,28 @@ const AdminWallet: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b">
-                        <td className="px-4 py-3">May 15, 2023</td>
-                        <td className="px-4 py-3">PayPal</td>
-                        <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Completed</span></td>
-                        <td className="px-4 py-3 text-right text-blue-600">-$500.00</td>
-                      </tr>
-                      <tr className="border-b">
-                        <td className="px-4 py-3">April 30, 2023</td>
-                        <td className="px-4 py-3">PayPal</td>
-                        <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Completed</span></td>
-                        <td className="px-4 py-3 text-right text-blue-600">-$350.00</td>
-                      </tr>
+                      {withdrawals.length > 0 ? (
+                        withdrawals.map((withdrawal) => (
+                          <tr key={withdrawal.id} className="border-b">
+                            <td className="px-4 py-3">{new Date(withdrawal.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-3">PayPal</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                withdrawal.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-blue-600">-${withdrawal.amount.toFixed(2)}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-center text-gray-500">No withdrawals recorded yet</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -148,7 +161,7 @@ const AdminWallet: React.FC = () => {
                       type="email" 
                       className="w-full px-3 py-2 border rounded-md" 
                       placeholder="your.email@example.com"
-                      defaultValue="kunalsonpitre555@yahoo.com"
+                      defaultValue={useData().paypalEmail || ''}
                     />
                   </div>
                   <button className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors">
