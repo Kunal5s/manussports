@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
 
 type User = {
@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check for existing session
@@ -39,12 +40,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsAuthenticated(true);
+        
+        // Redirect to admin dashboard if user is on login page but already authenticated
+        if (location.pathname === '/login') {
+          navigate('/admin');
+        }
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('manusSportsUser');
       }
+    } else if (location.pathname.includes('/admin') && !isAuthenticated) {
+      // Redirect to login if trying to access admin pages without authentication
+      navigate('/login');
     }
-  }, []);
+  }, [location.pathname, navigate, isAuthenticated]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     // Check if the credentials match the admin credentials
@@ -79,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       title: "Logged out",
       description: "You have been successfully logged out.",
     });
-    navigate('/');
+    navigate('/login');
   };
 
   return (

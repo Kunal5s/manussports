@@ -5,9 +5,9 @@ import { PlusCircle, TrendingUp, DollarSign, Users, FileText } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
 
-const AdminDashboardContent: React.FC = () => {
+const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { articles, walletBalance, earnings, authors } = useData();
@@ -153,14 +153,6 @@ const AdminDashboardContent: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
-
-const AdminDashboard: React.FC = () => {
-  return (
-    <DataProvider>
-      <AdminDashboardContent />
-    </DataProvider>
   );
 };
 

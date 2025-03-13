@@ -22,39 +22,42 @@ import WriterGuidelinesPage from "./pages/WriterGuidelinesPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { AuthProvider } from "./contexts/AuthContext";
+import { DataProvider } from "./contexts/DataContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/articles" element={<ArticlesPage />} />
-            <Route path="/articles/:category" element={<ArticlesPage />} />
-            <Route path="/article/:id" element={<ArticlePage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/author/:authorId" element={<AuthorProfile />} />
-            <Route path="/writer-guidelines" element={<WriterGuidelinesPage />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/articles" element={<AdminArticles />} />
-            <Route path="/admin/articles/edit/:articleId" element={<ArticleEditor />} />
-            <Route path="/admin/articles/new" element={<ArticleEditor />} />
-            <Route path="/admin/wallet" element={<AdminWallet />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
-            <Route path="/admin/authors" element={<AdminAuthors />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </AuthProvider>
+      <DataProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/articles" element={<ArticlesPage />} />
+              <Route path="/articles/:category" element={<ArticlesPage />} />
+              <Route path="/article/:id" element={<ArticlePage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/author/:authorId" element={<AuthorProfile />} />
+              <Route path="/writer-guidelines" element={<WriterGuidelinesPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/articles" element={<AdminArticles />} />
+              <Route path="/admin/articles/edit/:articleId" element={<ArticleEditor />} />
+              <Route path="/admin/articles/new" element={<ArticleEditor />} />
+              <Route path="/admin/wallet" element={<AdminWallet />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/authors" element={<AdminAuthors />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </AuthProvider>
+      </DataProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

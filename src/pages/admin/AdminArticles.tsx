@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/dialog";
 import AdminSidebar from '@/components/AdminSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 
-const AdminArticlesContent: React.FC = () => {
+const AdminArticles: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { articles, authors, deleteArticle } = useData();
@@ -179,14 +179,6 @@ const AdminArticlesContent: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
-
-const AdminArticles: React.FC = () => {
-  return (
-    <DataProvider>
-      <AdminArticlesContent />
-    </DataProvider>
   );
 };
 

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, List, ListOrdered, Heading1, Heading2, Heading3, Link, Image, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataProvider, useData, CategoryType } from '@/contexts/DataContext';
+import { useData, CategoryType } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 
-const ArticleEditorContent: React.FC = () => {
+const ArticleEditor: React.FC = () => {
   const { articleId } = useParams<{ articleId: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { articles, authors, addArticle, updateArticle, getArticleById } = useData();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
@@ -167,6 +168,44 @@ const ArticleEditorContent: React.FC = () => {
     }
     
     setContent(prev => prev + formattedText);
+  };
+
+  const handleImageUpload = () => {
+    // Trigger the hidden file input
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Create a FileReader to read the file
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        // Set the image preview
+        setFeaturedImage(event.target.result as string);
+        
+        toast({
+          title: "Image uploaded",
+          description: "Featured image has been updated.",
+        });
+      }
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: "Upload failed",
+        description: "There was a problem uploading your image.",
+        variant: "destructive",
+      });
+    };
+    
+    // Read the file as a data URL
+    reader.readAsDataURL(file);
   };
   
   return (
@@ -352,7 +391,7 @@ const ArticleEditorContent: React.FC = () => {
                 <div className="mb-4">
                   <div className="border rounded-md overflow-hidden h-48">
                     <img 
-                      src={featuredImage || '/public/placeholder.svg'} 
+                      src={featuredImage} 
                       alt="Featured preview"
                       className="w-full h-full object-cover"
                     />
@@ -360,7 +399,14 @@ const ArticleEditorContent: React.FC = () => {
                 </div>
                 
                 <div className="flex justify-center">
-                  <Button variant="outline" className="w-full">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                  <Button variant="outline" className="w-full" onClick={handleImageUpload}>
                     <Upload size={16} className="mr-2" />
                     Upload Image
                   </Button>
@@ -374,14 +420,6 @@ const ArticleEditorContent: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
-
-const ArticleEditor: React.FC = () => {
-  return (
-    <DataProvider>
-      <ArticleEditorContent />
-    </DataProvider>
   );
 };
 

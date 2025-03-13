@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDown, ArrowUp, DollarSign } from 'lucide-react';
@@ -24,9 +26,17 @@ const withdrawalSchema = z.object({
 type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
 
 const AdminWallet: React.FC = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal } = useData();
   const { toast } = useToast();
   const [newPaypalEmail, setNewPaypalEmail] = useState(paypalEmail || '');
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
   // Calculate total earnings
   const totalEarnings = earnings.reduce((total, earning) => total + earning.amount, 0);
