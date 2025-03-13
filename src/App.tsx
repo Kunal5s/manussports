@@ -17,21 +17,23 @@ import AdminAuthors from "./pages/admin/AdminAuthors";
 import ArticleEditor from "./pages/admin/ArticleEditor";
 import AuthorProfile from "./pages/AuthorProfile";
 import NotFound from "./pages/NotFound";
+import ArticlePage from "./pages/ArticlePage";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/articles" element={<ArticlesPage />} />
             <Route path="/articles/:category" element={<ArticlesPage />} />
+            <Route path="/article/:id" element={<ArticlePage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -45,9 +47,9 @@ const App = () => (
             <Route path="/admin/authors" element={<AdminAuthors />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
