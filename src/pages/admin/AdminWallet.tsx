@@ -1,19 +1,90 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowDown, ArrowUp, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+
+// Define form validation schema
+const withdrawalSchema = z.object({
+  amount: z.coerce.number()
+    .positive("Amount must be positive")
+    .min(10, "Minimum withdrawal amount is $10")
+    .max(1000, "Maximum withdrawal amount is $1000"),
+});
+
+type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
 
 const AdminWallet: React.FC = () => {
-  const { walletBalance, earnings, withdrawals } = useData();
+  const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal } = useData();
+  const { toast } = useToast();
+  const [newPaypalEmail, setNewPaypalEmail] = useState(paypalEmail || '');
 
   // Calculate total earnings
   const totalEarnings = earnings.reduce((total, earning) => total + earning.amount, 0);
   
   // Calculate total withdrawals
   const totalWithdrawals = withdrawals.reduce((total, withdrawal) => total + withdrawal.amount, 0);
+
+  // Setup withdrawal form
+  const form = useForm<WithdrawalFormValues>({
+    resolver: zodResolver(withdrawalSchema),
+    defaultValues: {
+      amount: 10,
+    },
+  });
+
+  const handlePaypalUpdate = () => {
+    if (!newPaypalEmail) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid PayPal email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    updatePaypalEmail(newPaypalEmail);
+    toast({
+      title: "Success",
+      description: "PayPal email updated successfully",
+    });
+  };
+
+  const onWithdrawalSubmit = (data: WithdrawalFormValues) => {
+    if (!paypalEmail) {
+      toast({
+        title: "Error",
+        description: "Please set your PayPal email first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.amount > walletBalance) {
+      toast({
+        title: "Insufficient funds",
+        description: "Withdrawal amount exceeds available balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    requestWithdrawal(data.amount);
+    toast({
+      title: "Withdrawal requested",
+      description: `$${data.amount.toFixed(2)} will be sent to your PayPal account`,
+    });
+    form.reset();
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -58,13 +129,14 @@ const AdminWallet: React.FC = () => {
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="payment">Payment Settings</TabsTrigger>
+            <TabsTrigger value="withdraw">Request Withdrawal</TabsTrigger>
           </TabsList>
           
           <TabsContent value="transactions">
             <Card>
               <CardHeader>
                 <CardTitle>Earnings History</CardTitle>
-                <CardDescription>Record of all earnings from your articles</CardDescription>
+                <CardDescription>Record of all earnings from your articles ($5 per 1-minute read time)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border">
@@ -157,17 +229,68 @@ const AdminWallet: React.FC = () => {
                 <div className="space-y-4 max-w-md">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">PayPal Email</label>
-                    <input 
+                    <Input 
                       type="email" 
                       className="w-full px-3 py-2 border rounded-md" 
                       placeholder="your.email@example.com"
-                      defaultValue={useData().paypalEmail || ''}
+                      value={newPaypalEmail}
+                      onChange={(e) => setNewPaypalEmail(e.target.value)}
                     />
                   </div>
-                  <button className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors">
+                  <Button
+                    onClick={handlePaypalUpdate}
+                    className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
+                  >
                     Update Payment Info
-                  </button>
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="withdraw">
+            <Card>
+              <CardHeader>
+                <CardTitle>Request Withdrawal</CardTitle>
+                <CardDescription>
+                  Withdraw your earnings to PayPal instantly
+                  {!paypalEmail && ' (Please set your PayPal email first)'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onWithdrawalSubmit)} className="space-y-6 max-w-md">
+                    <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Withdrawal Amount ($)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter amount"
+                              type="number"
+                              min={10}
+                              max={walletBalance}
+                              {...field}
+                              disabled={!paypalEmail}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500">
+                        Available: ${walletBalance.toFixed(2)}
+                      </div>
+                      <Button type="submit" disabled={!paypalEmail || walletBalance < 10}>
+                        Withdraw to PayPal
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>
