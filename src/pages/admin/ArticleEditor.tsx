@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Upload } from 'lucide-react';
+import { Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, List, ListOrdered, Heading1, Heading2, Heading3, Link, Image, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,8 @@ const ArticleEditorContent: React.FC = () => {
   const [readTime, setReadTime] = useState(5);
   const [featuredImage, setFeaturedImage] = useState('/public/placeholder.svg');
   const [previewHtml, setPreviewHtml] = useState('');
+  const [wordCount, setWordCount] = useState(0);
+  const [showPreview, setShowPreview] = useState(true);
   
   const isEditMode = !!articleId;
   
@@ -48,6 +50,9 @@ const ArticleEditorContent: React.FC = () => {
         setReadTime(article.readTime);
         setFeaturedImage(article.featuredImage);
         setPreviewHtml(article.content);
+        
+        // Calculate word count
+        calculateWordCount(article.content);
       } else {
         toast({
           title: "Article not found",
@@ -67,7 +72,19 @@ const ArticleEditorContent: React.FC = () => {
   // Update preview when content changes
   useEffect(() => {
     setPreviewHtml(content);
+    calculateWordCount(content);
   }, [content]);
+  
+  const calculateWordCount = (text: string) => {
+    // Strip HTML tags and count words
+    const strippedText = text.replace(/<[^>]*>/g, ' ');
+    const words = strippedText.split(/\s+/).filter(word => word.length > 0);
+    setWordCount(words.length);
+    
+    // Estimate read time: average reading speed is about 250 words per minute
+    const estimatedReadTime = Math.max(1, Math.ceil(words.length / 250));
+    setReadTime(estimatedReadTime);
+  };
   
   const handleSave = () => {
     // Validate fields
@@ -113,13 +130,43 @@ const ArticleEditorContent: React.FC = () => {
     navigate('/admin/articles');
   };
   
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+  const insertFormatting = (format: string) => {
+    // This is a simple implementation - in a real app, you would use a proper rich text editor
+    let formattedText = '';
     
-    // Estimate read time: average reading speed is about 250 words per minute
-    const wordCount = e.target.value.split(/\s+/).filter(Boolean).length;
-    const estimatedReadTime = Math.max(1, Math.ceil(wordCount / 250));
-    setReadTime(estimatedReadTime);
+    switch(format) {
+      case 'h1':
+        formattedText = `<h1>Heading 1</h1>`;
+        break;
+      case 'h2':
+        formattedText = `<h2>Heading 2</h2>`;
+        break;
+      case 'h3':
+        formattedText = `<h3>Heading 3</h3>`;
+        break;
+      case 'bold':
+        formattedText = `<strong>Bold text</strong>`;
+        break;
+      case 'italic':
+        formattedText = `<em>Italic text</em>`;
+        break;
+      case 'ul':
+        formattedText = `<ul>\n  <li>List item 1</li>\n  <li>List item 2</li>\n</ul>`;
+        break;
+      case 'ol':
+        formattedText = `<ol>\n  <li>List item 1</li>\n  <li>List item 2</li>\n</ol>`;
+        break;
+      case 'link':
+        formattedText = `<a href="https://example.com">Link text</a>`;
+        break;
+      case 'image':
+        formattedText = `<img src="/public/placeholder.svg" alt="Image description" class="w-full h-auto">`;
+        break;
+      default:
+        formattedText = '';
+    }
+    
+    setContent(prev => prev + formattedText);
   };
   
   return (
@@ -162,29 +209,87 @@ const ArticleEditorContent: React.FC = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="content">Content (HTML)</Label>
-                  <Textarea 
-                    id="content"
-                    value={content}
-                    onChange={handleContentChange}
-                    placeholder="<h1>Article Title</h1><p>Your content here...</p>"
-                    rows={15}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use HTML tags for formatting: &lt;h1&gt;, &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;a&gt;, etc.
-                  </p>
+                  <Label htmlFor="content">Article Content</Label>
+                  <div className="border rounded-md mb-2">
+                    <div className="flex flex-wrap items-center border-b p-2 gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h1')}>
+                        <Heading1 size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h2')}>
+                        <Heading2 size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h3')}>
+                        <Heading3 size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('bold')}>
+                        <Bold size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('italic')}>
+                        <Italic size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('ul')}>
+                        <List size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('ol')}>
+                        <ListOrdered size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('link')}>
+                        <Link size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('image')}>
+                        <Image size={16} />
+                      </Button>
+                    </div>
+                    <Textarea 
+                      id="content"
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      placeholder="Write your article content here..."
+                      rows={15}
+                      className="border-none focus-visible:ring-0"
+                    />
+                    <div className="flex justify-between items-center border-t p-2 text-xs text-gray-500">
+                      <div>Word count: {wordCount} / 5000</div>
+                      <div>{wordCount < 500 ? 'Very short' : wordCount < 1000 ? 'Short' : wordCount < 2000 ? 'Medium' : 'Long'}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-lg font-medium mb-4">Content Preview</h3>
-                <div className="prose max-w-none border p-4 rounded-md min-h-[300px]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
-              </div>
+              {showPreview && (
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">Live Preview</h3>
+                    <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>Hide Preview</Button>
+                  </div>
+                  <div className="prose max-w-none border p-4 rounded-md min-h-[300px]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                </div>
+              )}
+              
+              {!showPreview && (
+                <Button variant="outline" className="w-full" onClick={() => setShowPreview(true)}>
+                  <FileText size={16} className="mr-2" />
+                  Show Preview
+                </Button>
+              )}
             </div>
             
             {/* Settings Column */}
             <div className="space-y-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-medium mb-4">Publishing Options</h3>
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    ✓
+                  </div>
+                  <span>Publish immediately</span>
+                </div>
+                <Button onClick={handleSave} className="w-full">
+                  <Save size={16} className="mr-2" />
+                  {isEditMode ? 'Update Article' : 'Publish Article'}
+                </Button>
+              </div>
+            
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h3 className="text-lg font-medium mb-4">Article Settings</h3>
                 
@@ -261,14 +366,9 @@ const ArticleEditorContent: React.FC = () => {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  Recommended ratio: 16:9
+                  Recommended size: 1200x630 pixels (16:9 ratio)
                 </p>
               </div>
-              
-              <Button onClick={handleSave} className="w-full">
-                <Save size={16} className="mr-2" />
-                {isEditMode ? 'Update Article' : 'Publish Article'}
-              </Button>
             </div>
           </div>
         </div>

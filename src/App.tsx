@@ -18,6 +18,9 @@ import ArticleEditor from "./pages/admin/ArticleEditor";
 import AuthorProfile from "./pages/AuthorProfile";
 import NotFound from "./pages/NotFound";
 import ArticlePage from "./pages/ArticlePage";
+import WriterGuidelinesPage from "./pages/WriterGuidelinesPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -38,6 +41,9 @@ const App = () => (
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/author/:authorId" element={<AuthorProfile />} />
+            <Route path="/writer-guidelines" element={<WriterGuidelinesPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/articles" element={<AdminArticles />} />
             <Route path="/admin/articles/edit/:articleId" element={<ArticleEditor />} />

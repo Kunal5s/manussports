@@ -40,9 +40,9 @@ const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-300 hover:text-white">About Us</Link></li>
               <li><Link to="/contact" className="text-gray-300 hover:text-white">Contact</Link></li>
-              <li><Link to="#" className="text-gray-300 hover:text-white">Writer Guidelines</Link></li>
-              <li><Link to="#" className="text-gray-300 hover:text-white">Privacy Policy</Link></li>
-              <li><Link to="#" className="text-gray-300 hover:text-white">Terms of Service</Link></li>
+              <li><Link to="/writer-guidelines" className="text-gray-300 hover:text-white">Writer Guidelines</Link></li>
+              <li><Link to="/privacy-policy" className="text-gray-300 hover:text-white">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="text-gray-300 hover:text-white">Terms of Service</Link></li>
             </ul>
           </div>
           

@@ -5,7 +5,7 @@ import { DataProvider, useData } from '@/contexts/DataContext';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
-import { Clock, Eye, User } from 'lucide-react';
+import { Clock, Eye, User, Calendar } from 'lucide-react';
 
 const ArticlePageContent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,12 +69,16 @@ const ArticlePageContent: React.FC = () => {
           </span>
           <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
           
-          <div className="flex items-center text-gray-500 mb-6">
-            <div className="flex items-center mr-6">
+          <div className="flex flex-wrap items-center text-gray-500 mb-6 gap-4">
+            <div className="flex items-center">
               <User className="h-4 w-4 mr-1" />
               <span>{author.name}</span>
             </div>
-            <div className="flex items-center mr-6">
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-1" />
+              <span>{publishedDate}</span>
+            </div>
+            <div className="flex items-center">
               <Clock className="h-4 w-4 mr-1" />
               <span>{article.readTime} min read</span>
             </div>
@@ -99,10 +103,24 @@ const ArticlePageContent: React.FC = () => {
           <div dangerouslySetInnerHTML={{ __html: article.content }} />
         </div>
         
-        <div className="border-t pt-6">
+        <div className="border-t pt-6 flex flex-wrap items-center justify-between">
           <p className="text-gray-500 text-sm">
             Published on {publishedDate}
           </p>
+          
+          <div className="flex items-center mt-2 md:mt-0">
+            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden mr-3">
+              <img 
+                src={author.profileImage || '/public/placeholder.svg'} 
+                alt={author.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <p className="font-medium">{author.name}</p>
+              <p className="text-sm text-gray-500">Author</p>
+            </div>
+          </div>
         </div>
         
         {/* Reading time indicator (hidden in production) */}
