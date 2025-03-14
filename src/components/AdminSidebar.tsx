@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe } from 'lucide-react';
+import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { Button } from '@/components/ui/button';
 
 const AdminSidebar: React.FC = () => {
   const location = useLocation();
@@ -48,21 +49,20 @@ const AdminSidebar: React.FC = () => {
               </Link>
             </li>
           ))}
-          
-          {/* Link back to main website */}
-          <li>
-            <Link 
-              to="/"
-              className="flex items-center space-x-3 p-3 rounded-md text-gray-600 hover:bg-gray-200 hover:text-black transition-colors"
-            >
-              <Globe size={18} />
-              <span>View Website</span>
-            </Link>
-          </li>
         </ul>
       </nav>
       
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 space-y-3">
+        {/* Link back to main website - more prominently displayed */}
+        <Link 
+          to="/"
+          className="flex items-center justify-center space-x-2 p-3 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+        >
+          <Globe size={18} />
+          <span>View Website</span>
+          <ExternalLink size={14} />
+        </Link>
+        
         <button 
           className="flex items-center space-x-3 p-3 rounded-md w-full text-gray-600 hover:bg-gray-200 hover:text-black transition-colors"
           onClick={logout}

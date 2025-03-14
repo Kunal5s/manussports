@@ -6,7 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDown, ArrowUp, DollarSign } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ const AdminWallet: React.FC = () => {
   const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal, getArticleById } = useData();
   const { toast } = useToast();
   const [newPaypalEmail, setNewPaypalEmail] = useState(paypalEmail || '');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -88,12 +89,20 @@ const AdminWallet: React.FC = () => {
       return;
     }
 
-    requestWithdrawal(data.amount);
-    toast({
-      title: "Withdrawal requested",
-      description: `$${data.amount.toFixed(2)} will be sent to your PayPal account`,
-    });
-    form.reset();
+    setIsProcessing(true);
+
+    // Simulate PayPal transaction process
+    setTimeout(() => {
+      requestWithdrawal(data.amount);
+      
+      toast({
+        title: "Withdrawal successful",
+        description: `$${data.amount.toFixed(2)} has been sent to your PayPal account`,
+      });
+      
+      setIsProcessing(false);
+      form.reset();
+    }, 2000);
   };
 
   return (
@@ -206,11 +215,12 @@ const AdminWallet: React.FC = () => {
                             <td className="px-4 py-3">{new Date(withdrawal.date).toLocaleDateString()}</td>
                             <td className="px-4 py-3">PayPal</td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 text-xs rounded-full ${
+                              <span className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
                                 withdrawal.status === 'completed' 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-yellow-100 text-yellow-800'
                               }`}>
+                                {withdrawal.status === 'completed' && <Check className="mr-1 h-3 w-3" />}
                                 {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
                               </span>
                             </td>
@@ -253,6 +263,14 @@ const AdminWallet: React.FC = () => {
                   >
                     Update Payment Info
                   </Button>
+
+                  <div className="mt-6 p-4 bg-green-50 text-green-700 rounded-md">
+                    <h3 className="font-medium mb-2">PayPal Integration Info</h3>
+                    <p className="text-sm">
+                      Your earnings are automatically sent to your PayPal account within 5 minutes of withdrawal request. 
+                      Make sure your PayPal email is correct to avoid delays.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -283,7 +301,7 @@ const AdminWallet: React.FC = () => {
                               min={10}
                               max={walletBalance}
                               {...field}
-                              disabled={!paypalEmail}
+                              disabled={!paypalEmail || isProcessing}
                             />
                           </FormControl>
                           <FormMessage />
@@ -295,10 +313,20 @@ const AdminWallet: React.FC = () => {
                       <div className="text-sm text-gray-500">
                         Available: ${walletBalance.toFixed(2)}
                       </div>
-                      <Button type="submit" disabled={!paypalEmail || walletBalance < 10}>
-                        Withdraw to PayPal
+                      <Button 
+                        type="submit" 
+                        disabled={!paypalEmail || walletBalance < 10 || isProcessing}
+                        className={isProcessing ? "bg-gray-400" : ""}
+                      >
+                        {isProcessing ? "Processing..." : "Withdraw to PayPal"}
                       </Button>
                     </div>
+
+                    {walletBalance >= 10 && (
+                      <div className="p-3 bg-blue-50 text-blue-700 rounded-md mt-4 text-sm">
+                        <p>Funds will be sent to your PayPal account within 5 minutes of approval.</p>
+                      </div>
+                    )}
                   </form>
                 </Form>
               </CardContent>

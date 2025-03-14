@@ -4,36 +4,94 @@ import AdminSidebar from '@/components/AdminSidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-
-const viewsData = [
-  { name: 'Jan', views: 4000 },
-  { name: 'Feb', views: 3000 },
-  { name: 'Mar', views: 2000 },
-  { name: 'Apr', views: 2780 },
-  { name: 'May', views: 1890 },
-  { name: 'Jun', views: 2390 },
-  { name: 'Jul', views: 3490 },
-];
-
-const earningsData = [
-  { name: 'Jan', earnings: 2400 },
-  { name: 'Feb', earnings: 1398 },
-  { name: 'Mar', earnings: 9800 },
-  { name: 'Apr', earnings: 3908 },
-  { name: 'May', earnings: 4800 },
-  { name: 'Jun', earnings: 3800 },
-  { name: 'Jul', earnings: 4300 },
-];
-
-const topArticles = [
-  { id: 1, title: 'Top 10 Football Moments of 2023', views: 1256, earnings: 628 },
-  { id: 2, title: 'The Rise of Basketball in Europe', views: 984, earnings: 492 },
-  { id: 3, title: 'Cricket World Cup Preview', views: 876, earnings: 438 },
-  { id: 4, title: 'Tennis Grand Slam Analysis', views: 765, earnings: 382.5 },
-  { id: 5, title: 'Formula 1: Season Highlights', views: 654, earnings: 327 },
-];
+import { useData } from '@/contexts/DataContext';
 
 const AdminAnalytics: React.FC = () => {
+  const { articles, earnings, getArticleById } = useData();
+  
+  // Calculate total views
+  const totalViews = articles.reduce((total, article) => total + article.views.total, 0);
+  
+  // Calculate total earnings
+  const totalEarnings = earnings.reduce((total, earning) => total + earning.amount, 0);
+  
+  // Calculate total articles
+  const totalArticles = articles.length;
+  
+  // Get monthly views data
+  const generateMonthlyViewsData = () => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    // Create data for 7 months (current month and 6 previous)
+    return Array.from({ length: 7 }, (_, i) => {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const viewCount = articles.reduce((total, article) => {
+        // Use real view data from articles
+        const monthlyViews = article.views.monthly[i] || 0;
+        return total + monthlyViews;
+      }, 0);
+      
+      return {
+        name: monthNames[monthIndex],
+        views: viewCount
+      };
+    }).reverse();
+  };
+  
+  // Get monthly earnings data
+  const generateMonthlyEarningsData = () => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    // Group earnings by month
+    const monthlyEarnings = Array(7).fill(0);
+    
+    earnings.forEach(earning => {
+      const earningDate = new Date(earning.date);
+      const monthDiff = (currentMonth - earningDate.getMonth() + 12) % 12;
+      
+      if (monthDiff < 7) {
+        monthlyEarnings[monthDiff] += earning.amount;
+      }
+    });
+    
+    // Create data for 7 months (current month and 6 previous)
+    return Array.from({ length: 7 }, (_, i) => {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      return {
+        name: monthNames[monthIndex],
+        earnings: monthlyEarnings[i]
+      };
+    }).reverse();
+  };
+  
+  // Get top performing articles based on views and earnings
+  const getTopArticles = () => {
+    // Map articles with their earnings
+    const articlesWithEarnings = articles.map(article => {
+      const articleEarnings = earnings
+        .filter(earning => earning.articleId === article.id)
+        .reduce((total, earning) => total + earning.amount, 0);
+      
+      return {
+        id: article.id,
+        title: article.title,
+        views: article.views.total,
+        earnings: articleEarnings
+      };
+    });
+    
+    // Sort by earnings (descending)
+    return articlesWithEarnings
+      .sort((a, b) => b.earnings - a.earnings)
+      .slice(0, 5); // Top 5 articles
+  };
+  
+  const viewsData = generateMonthlyViewsData();
+  const earningsData = generateMonthlyEarningsData();
+  const topArticles = getTopArticles();
+  
   return (
     <div className="flex h-screen bg-gray-50">
       <AdminSidebar />
@@ -44,21 +102,21 @@ const AdminAnalytics: React.FC = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Views</CardDescription>
-              <CardTitle className="text-3xl">24,789</CardTitle>
+              <CardTitle className="text-3xl">{totalViews.toLocaleString()}</CardTitle>
             </CardHeader>
           </Card>
           
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Earnings</CardDescription>
-              <CardTitle className="text-3xl">$12,394.50</CardTitle>
+              <CardTitle className="text-3xl">${totalEarnings.toFixed(2)}</CardTitle>
             </CardHeader>
           </Card>
           
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Articles Published</CardDescription>
-              <CardTitle className="text-3xl">32</CardTitle>
+              <CardTitle className="text-3xl">{totalArticles}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -128,14 +186,22 @@ const AdminAnalytics: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {topArticles.map((article) => (
-                        <tr key={article.id} className="border-b">
-                          <td className="px-4 py-3">{article.id}</td>
-                          <td className="px-4 py-3">{article.title}</td>
-                          <td className="px-4 py-3 text-right">{article.views.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right">${article.earnings.toFixed(2)}</td>
+                      {topArticles.length > 0 ? (
+                        topArticles.map((article, index) => (
+                          <tr key={article.id} className="border-b">
+                            <td className="px-4 py-3">{index + 1}</td>
+                            <td className="px-4 py-3">{article.title}</td>
+                            <td className="px-4 py-3 text-right">{article.views.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right">${article.earnings.toFixed(2)}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-center text-gray-500">
+                            No articles published yet
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
