@@ -47,12 +47,12 @@ const AdminSidebar: React.FC = () => {
                 to={item.path}
                 className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
                   location.pathname === item.path
-                    ? 'bg-gray-200 text-black'
+                    ? 'bg-gray-200 text-black font-medium'
                     : 'text-gray-600 hover:bg-gray-200 hover:text-black'
                 }`}
                 onClick={() => isMobile && setIsMenuOpen(false)}
               >
-                <item.icon size={18} />
+                <item.icon size={20} />
                 <span>{item.label}</span>
               </Link>
             </li>
@@ -64,11 +64,11 @@ const AdminSidebar: React.FC = () => {
         {/* Link back to main website - more prominently displayed */}
         <Link 
           to="/"
-          className="flex items-center justify-center space-x-2 p-3 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          className="flex items-center justify-center space-x-2 p-3 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors shadow-md"
           onClick={() => isMobile && setIsMenuOpen(false)}
         >
           <Globe size={18} />
-          <span>View Website</span>
+          <span className="font-medium">View Website</span>
           <ExternalLink size={14} />
         </Link>
         
@@ -83,7 +83,7 @@ const AdminSidebar: React.FC = () => {
     </>
   );
   
-  // Mobile view
+  // Mobile view with improved mobile friendliness
   if (isMobile) {
     return (
       <>
@@ -96,11 +96,11 @@ const AdminSidebar: React.FC = () => {
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         
-        {/* Mobile sidebar */}
+        {/* Mobile sidebar with improved touch targets */}
         {isMenuOpen && (
           <div className="fixed inset-0 z-40 bg-black bg-opacity-50" onClick={toggleMenu}>
             <div 
-              className="w-64 h-screen bg-gray-100 border-r border-gray-200 flex flex-col overflow-y-auto"
+              className="w-72 h-screen bg-gray-100 border-r border-gray-200 flex flex-col overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {sidebarContent}
