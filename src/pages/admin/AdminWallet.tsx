@@ -6,7 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowDown, ArrowUp, DollarSign, Check } from 'lucide-react';
+import { ArrowDown, ArrowUp, DollarSign, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Define form validation schema
 const withdrawalSchema = z.object({
@@ -21,6 +22,7 @@ const withdrawalSchema = z.object({
     .positive("Amount must be positive")
     .min(10, "Minimum withdrawal amount is $10")
     .max(1000, "Maximum withdrawal amount is $1000"),
+  bankAccount: z.string().optional(),
 });
 
 type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
@@ -32,6 +34,8 @@ const AdminWallet: React.FC = () => {
   const { toast } = useToast();
   const [newPaypalEmail, setNewPaypalEmail] = useState(paypalEmail || '');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bankAccount, setBankAccount] = useState('');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -50,6 +54,7 @@ const AdminWallet: React.FC = () => {
     resolver: zodResolver(withdrawalSchema),
     defaultValues: {
       amount: 10,
+      bankAccount: '',
     },
   });
 
@@ -91,7 +96,7 @@ const AdminWallet: React.FC = () => {
 
     setIsProcessing(true);
 
-    // Simulate PayPal transaction process
+    // Simulate PayPal transaction process with shorter delay (2 seconds for demo)
     setTimeout(() => {
       requestWithdrawal(data.amount);
       
@@ -100,23 +105,42 @@ const AdminWallet: React.FC = () => {
         description: `$${data.amount.toFixed(2)} has been sent to your PayPal account`,
       });
       
+      // Show second toast for bank transfer if bank account is provided
+      if (data.bankAccount) {
+        setTimeout(() => {
+          toast({
+            title: "Bank Transfer Initiated",
+            description: `$${data.amount.toFixed(2)} is being transferred to your bank account ending in ${data.bankAccount.slice(-4)}`,
+          });
+        }, 1000);
+      }
+      
       setIsProcessing(false);
       form.reset();
+      
+      // Simulate PayPal notification
+      setTimeout(() => {
+        toast({
+          title: "PayPal Notification",
+          description: `You've received $${data.amount.toFixed(2)} in your PayPal account`,
+          variant: "default",
+        });
+      }, 3000);
     }, 2000);
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-50">
       <AdminSidebar />
-      <div className="flex-1 overflow-auto p-8">
-        <h1 className="text-3xl font-bold mb-6">Wallet</h1>
+      <div className="flex-1 overflow-auto p-4 md:p-8 pt-16 md:pt-8">
+        <h1 className="text-2xl md:text-3xl font-bold mb-6">Wallet</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Current Balance</CardDescription>
-              <CardTitle className="text-3xl flex items-center">
-                <DollarSign className="h-6 w-6 text-gray-500 mr-1" />
+              <CardTitle className="text-xl md:text-3xl flex items-center">
+                <DollarSign className="h-5 w-5 md:h-6 md:w-6 text-gray-500 mr-1" />
                 {walletBalance.toFixed(2)}
               </CardTitle>
             </CardHeader>
@@ -125,8 +149,8 @@ const AdminWallet: React.FC = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Earnings</CardDescription>
-              <CardTitle className="text-3xl flex items-center text-green-600">
-                <ArrowUp className="h-6 w-6 mr-1" />
+              <CardTitle className="text-xl md:text-3xl flex items-center text-green-600">
+                <ArrowUp className="h-5 w-5 md:h-6 md:w-6 mr-1" />
                 ${totalEarnings.toFixed(2)}
               </CardTitle>
             </CardHeader>
@@ -135,8 +159,8 @@ const AdminWallet: React.FC = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Withdrawals</CardDescription>
-              <CardTitle className="text-3xl flex items-center text-blue-600">
-                <ArrowDown className="h-6 w-6 mr-1" />
+              <CardTitle className="text-xl md:text-3xl flex items-center text-blue-600">
+                <ArrowDown className="h-5 w-5 md:h-6 md:w-6 mr-1" />
                 ${totalWithdrawals.toFixed(2)}
               </CardTitle>
             </CardHeader>
@@ -144,11 +168,11 @@ const AdminWallet: React.FC = () => {
         </div>
 
         <Tabs defaultValue="transactions" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-            <TabsTrigger value="payment">Payment Settings</TabsTrigger>
-            <TabsTrigger value="withdraw">Request Withdrawal</TabsTrigger>
+          <TabsList className="mb-4 flex flex-wrap">
+            <TabsTrigger value="transactions" className="text-sm md:text-base">Transactions</TabsTrigger>
+            <TabsTrigger value="withdrawals" className="text-sm md:text-base">Withdrawals</TabsTrigger>
+            <TabsTrigger value="payment" className="text-sm md:text-base">Payment Settings</TabsTrigger>
+            <TabsTrigger value="withdraw" className="text-sm md:text-base">Request Withdrawal</TabsTrigger>
           </TabsList>
           
           <TabsContent value="transactions">
@@ -157,14 +181,14 @@ const AdminWallet: React.FC = () => {
                 <CardTitle>Earnings History</CardTitle>
                 <CardDescription>Record of all earnings from your articles ($5 per 1-minute read time)</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50">
-                        <th className="px-4 py-3 text-left font-medium">Date</th>
-                        <th className="px-4 py-3 text-left font-medium">Article</th>
-                        <th className="px-4 py-3 text-right font-medium">Amount</th>
+                        <th className="px-2 md:px-4 py-3 text-left font-medium">Date</th>
+                        <th className="px-2 md:px-4 py-3 text-left font-medium">Article</th>
+                        <th className="px-2 md:px-4 py-3 text-right font-medium">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -173,9 +197,9 @@ const AdminWallet: React.FC = () => {
                           const article = getArticleById(earning.articleId);
                           return (
                             <tr key={earning.id} className="border-b">
-                              <td className="px-4 py-3">{new Date(earning.date).toLocaleDateString()}</td>
-                              <td className="px-4 py-3">{article?.title || 'Unknown Article'}</td>
-                              <td className="px-4 py-3 text-right text-green-600">+${earning.amount.toFixed(2)}</td>
+                              <td className="px-2 md:px-4 py-3">{new Date(earning.date).toLocaleDateString()}</td>
+                              <td className="px-2 md:px-4 py-3 max-w-[150px] md:max-w-none truncate">{article?.title || 'Unknown Article'}</td>
+                              <td className="px-2 md:px-4 py-3 text-right text-green-600">+${earning.amount.toFixed(2)}</td>
                             </tr>
                           );
                         })
@@ -197,24 +221,24 @@ const AdminWallet: React.FC = () => {
                 <CardTitle>Withdrawal History</CardTitle>
                 <CardDescription>Record of all withdrawals to PayPal</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50">
-                        <th className="px-4 py-3 text-left font-medium">Date</th>
-                        <th className="px-4 py-3 text-left font-medium">Method</th>
-                        <th className="px-4 py-3 text-left font-medium">Status</th>
-                        <th className="px-4 py-3 text-right font-medium">Amount</th>
+                        <th className="px-2 md:px-4 py-3 text-left font-medium">Date</th>
+                        <th className="px-2 md:px-4 py-3 text-left font-medium">Method</th>
+                        <th className="px-2 md:px-4 py-3 text-left font-medium">Status</th>
+                        <th className="px-2 md:px-4 py-3 text-right font-medium">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {withdrawals.length > 0 ? (
                         withdrawals.map((withdrawal) => (
                           <tr key={withdrawal.id} className="border-b">
-                            <td className="px-4 py-3">{new Date(withdrawal.date).toLocaleDateString()}</td>
-                            <td className="px-4 py-3">PayPal</td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 md:px-4 py-3">{new Date(withdrawal.date).toLocaleDateString()}</td>
+                            <td className="px-2 md:px-4 py-3">PayPal</td>
+                            <td className="px-2 md:px-4 py-3">
                               <span className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
                                 withdrawal.status === 'completed' 
                                   ? 'bg-green-100 text-green-800' 
@@ -224,7 +248,7 @@ const AdminWallet: React.FC = () => {
                                 {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right text-blue-600">-${withdrawal.amount.toFixed(2)}</td>
+                            <td className="px-2 md:px-4 py-3 text-right text-blue-600">-${withdrawal.amount.toFixed(2)}</td>
                           </tr>
                         ))
                       ) : (
@@ -243,10 +267,10 @@ const AdminWallet: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Payment Settings</CardTitle>
-                <CardDescription>Manage your payment method</CardDescription>
+                <CardDescription>Manage your payment methods</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-w-md">
+                <div className="space-y-6 max-w-md">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">PayPal Email</label>
                     <Input 
@@ -261,7 +285,32 @@ const AdminWallet: React.FC = () => {
                     onClick={handlePaypalUpdate}
                     className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
                   >
-                    Update Payment Info
+                    Update PayPal Email
+                  </Button>
+
+                  <div className="space-y-2 mt-6 pt-6 border-t">
+                    <label className="text-sm font-medium">Bank Account (for direct transfers)</label>
+                    <Input 
+                      type="text" 
+                      className="w-full px-3 py-2 border rounded-md" 
+                      placeholder="Account number or last 4 digits"
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500">For direct bank transfers from your PayPal account</p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      toast({
+                        title: "Bank Account Linked",
+                        description: "Your bank account has been linked to your PayPal account for automatic transfers",
+                      });
+                    }}
+                    variant="outline"
+                    className="px-4 py-2"
+                    disabled={!bankAccount}
+                  >
+                    Link Bank Account
                   </Button>
 
                   <div className="mt-6 p-4 bg-green-50 text-green-700 rounded-md">
@@ -270,6 +319,17 @@ const AdminWallet: React.FC = () => {
                       Your earnings are automatically sent to your PayPal account within 5 minutes of withdrawal request. 
                       Make sure your PayPal email is correct to avoid delays.
                     </p>
+                    <div className="mt-2 flex">
+                      <a 
+                        href="https://www.paypal.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 flex items-center hover:underline"
+                      >
+                        Check PayPal Account 
+                        <ExternalLink size={14} className="ml-1" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -309,6 +369,26 @@ const AdminWallet: React.FC = () => {
                       )}
                     />
                     
+                    <FormField
+                      control={form.control}
+                      name="bankAccount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bank Account (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="For direct bank transfer"
+                              type="text"
+                              {...field}
+                              disabled={!paypalEmail || isProcessing}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-gray-500">If provided, funds will be automatically transferred to your bank account</p>
+                        </FormItem>
+                      )}
+                    />
+                    
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500">
                         Available: ${walletBalance.toFixed(2)}
@@ -325,6 +405,7 @@ const AdminWallet: React.FC = () => {
                     {walletBalance >= 10 && (
                       <div className="p-3 bg-blue-50 text-blue-700 rounded-md mt-4 text-sm">
                         <p>Funds will be sent to your PayPal account within 5 minutes of approval.</p>
+                        {bankAccount && <p className="mt-1">Direct bank transfer will be initiated immediately after PayPal receives the funds.</p>}
                       </div>
                     )}
                   </form>

@@ -1,15 +1,18 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe, ExternalLink } from 'lucide-react';
+import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe, ExternalLink, Menu, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AdminSidebar: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuth();
   const { walletBalance } = useData();
+  const isMobile = useIsMobile();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const menuItems = [
     { icon: Home, label: 'Dashboard', path: '/admin' },
@@ -18,10 +21,14 @@ const AdminSidebar: React.FC = () => {
     { icon: Wallet, label: 'Wallet', path: '/admin/wallet' },
     { icon: Users, label: 'Authors', path: '/admin/authors' },
   ];
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
   
-  return (
-    <div className="w-64 h-screen bg-gray-100 border-r border-gray-200 flex flex-col">
-      <div className="p-6 border-b border-gray-200">
+  const sidebarContent = (
+    <>
+      <div className="p-4 md:p-6 border-b border-gray-200">
         <h1 className="text-xl font-bold">Admin Dashboard</h1>
       </div>
       
@@ -43,6 +50,7 @@ const AdminSidebar: React.FC = () => {
                     ? 'bg-gray-200 text-black'
                     : 'text-gray-600 hover:bg-gray-200 hover:text-black'
                 }`}
+                onClick={() => isMobile && setIsMenuOpen(false)}
               >
                 <item.icon size={18} />
                 <span>{item.label}</span>
@@ -57,6 +65,7 @@ const AdminSidebar: React.FC = () => {
         <Link 
           to="/"
           className="flex items-center justify-center space-x-2 p-3 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          onClick={() => isMobile && setIsMenuOpen(false)}
         >
           <Globe size={18} />
           <span>View Website</span>
@@ -71,6 +80,41 @@ const AdminSidebar: React.FC = () => {
           <span>Logout</span>
         </button>
       </div>
+    </>
+  );
+  
+  // Mobile view
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile menu button */}
+        <button 
+          onClick={toggleMenu}
+          className="fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md"
+          aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        
+        {/* Mobile sidebar */}
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-40 bg-black bg-opacity-50" onClick={toggleMenu}>
+            <div 
+              className="w-64 h-screen bg-gray-100 border-r border-gray-200 flex flex-col overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {sidebarContent}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+  
+  // Desktop view
+  return (
+    <div className="w-64 h-screen bg-gray-100 border-r border-gray-200 flex flex-col">
+      {sidebarContent}
     </div>
   );
 };
