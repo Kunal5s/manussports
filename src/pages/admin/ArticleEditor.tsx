@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, List, ListOrdered, Heading1, Heading2, Heading3, Link, Image, FileText } from 'lucide-react';
+import { Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, List, ListOrdered, Heading1, Heading2, Heading3, Link as LinkIcon, Image, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ const ArticleEditor: React.FC = () => {
   const { articles, authors, addArticle, updateArticle, getArticleById } = useData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentEditorRef = useRef<HTMLDivElement>(null);
   
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
@@ -27,7 +28,6 @@ const ArticleEditor: React.FC = () => {
   const [authorId, setAuthorId] = useState('');
   const [readTime, setReadTime] = useState(5);
   const [featuredImage, setFeaturedImage] = useState('/public/placeholder.svg');
-  const [previewHtml, setPreviewHtml] = useState('');
   const [wordCount, setWordCount] = useState(0);
   const [showPreview, setShowPreview] = useState(true);
   
@@ -46,11 +46,13 @@ const ArticleEditor: React.FC = () => {
         setTitle(article.title);
         setSummary(article.summary);
         setContent(article.content);
+        if (contentEditorRef.current) {
+          contentEditorRef.current.innerHTML = article.content;
+        }
         setCategory(article.category);
         setAuthorId(article.authorId);
         setReadTime(article.readTime);
         setFeaturedImage(article.featuredImage);
-        setPreviewHtml(article.content);
         
         // Calculate word count
         calculateWordCount(article.content);
@@ -70,12 +72,6 @@ const ArticleEditor: React.FC = () => {
     }
   }, [isEditMode, articleId, getArticleById, navigate, authors, toast]);
   
-  // Update preview when content changes
-  useEffect(() => {
-    setPreviewHtml(content);
-    calculateWordCount(content);
-  }, [content]);
-  
   const calculateWordCount = (text: string) => {
     // Strip HTML tags and count words
     const strippedText = text.replace(/<[^>]*>/g, ' ');
@@ -85,6 +81,14 @@ const ArticleEditor: React.FC = () => {
     // Estimate read time: average reading speed is about 250 words per minute
     const estimatedReadTime = Math.max(1, Math.ceil(words.length / 250));
     setReadTime(estimatedReadTime);
+  };
+  
+  const handleContentChange = () => {
+    if (contentEditorRef.current) {
+      const html = contentEditorRef.current.innerHTML;
+      setContent(html);
+      calculateWordCount(html);
+    }
   };
   
   const handleSave = () => {
@@ -132,42 +136,48 @@ const ArticleEditor: React.FC = () => {
   };
   
   const insertFormatting = (format: string) => {
-    // This is a simple implementation - in a real app, you would use a proper rich text editor
-    let formattedText = '';
+    if (!contentEditorRef.current) return;
+    
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const range = selection.getRangeAt(0);
+    let element;
     
     switch(format) {
       case 'h1':
-        formattedText = `<h1>Heading 1</h1>`;
+        document.execCommand('formatBlock', false, 'h1');
         break;
       case 'h2':
-        formattedText = `<h2>Heading 2</h2>`;
+        document.execCommand('formatBlock', false, 'h2');
         break;
       case 'h3':
-        formattedText = `<h3>Heading 3</h3>`;
+        document.execCommand('formatBlock', false, 'h3');
         break;
       case 'bold':
-        formattedText = `<strong>Bold text</strong>`;
+        document.execCommand('bold', false);
         break;
       case 'italic':
-        formattedText = `<em>Italic text</em>`;
+        document.execCommand('italic', false);
         break;
       case 'ul':
-        formattedText = `<ul>\n  <li>List item 1</li>\n  <li>List item 2</li>\n</ul>`;
+        document.execCommand('insertUnorderedList', false);
         break;
       case 'ol':
-        formattedText = `<ol>\n  <li>List item 1</li>\n  <li>List item 2</li>\n</ol>`;
+        document.execCommand('insertOrderedList', false);
         break;
       case 'link':
-        formattedText = `<a href="https://example.com">Link text</a>`;
+        const url = prompt('Enter URL:');
+        if (url) document.execCommand('createLink', false, url);
         break;
       case 'image':
-        formattedText = `<img src="/public/placeholder.svg" alt="Image description" class="w-full h-auto">`;
+        if (fileInputRef.current) fileInputRef.current.click();
         break;
       default:
-        formattedText = '';
+        break;
     }
     
-    setContent(prev => prev + formattedText);
+    handleContentChange();
   };
 
   const handleImageUpload = () => {
@@ -192,6 +202,39 @@ const ArticleEditor: React.FC = () => {
         toast({
           title: "Image uploaded",
           description: "Featured image has been updated.",
+        });
+      }
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: "Upload failed",
+        description: "There was a problem uploading your image.",
+        variant: "destructive",
+      });
+    };
+    
+    // Read the file as a data URL
+    reader.readAsDataURL(file);
+  };
+
+  const handleContentImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Create a FileReader to read the file
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      if (event.target?.result && contentEditorRef.current) {
+        // Insert image at current selection position
+        const imageUrl = event.target.result as string;
+        document.execCommand('insertHTML', false, `<img src="${imageUrl}" alt="Article image" class="w-full h-auto my-2" />`);
+        handleContentChange();
+        
+        toast({
+          title: "Image inserted",
+          description: "Image has been added to the article.",
         });
       }
     };
@@ -273,19 +316,25 @@ const ArticleEditor: React.FC = () => {
                         <ListOrdered size={16} />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => insertFormatting('link')}>
-                        <Link size={16} />
+                        <LinkIcon size={16} />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => insertFormatting('image')}>
                         <Image size={16} />
                       </Button>
                     </div>
-                    <Textarea 
-                      id="content"
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Write your article content here..."
-                      rows={15}
-                      className="border-none focus-visible:ring-0"
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={handleContentImageUpload}
+                      accept="image/*"
+                    />
+                    <div 
+                      ref={contentEditorRef}
+                      className="p-3 min-h-[300px] focus:outline-none prose max-w-none"
+                      contentEditable
+                      onInput={handleContentChange}
+                      onBlur={handleContentChange}
+                      dangerouslySetInnerHTML={{ __html: content }}
                     />
                     <div className="flex justify-between items-center border-t p-2 text-xs text-gray-500">
                       <div>Word count: {wordCount} / 5000</div>
@@ -301,7 +350,7 @@ const ArticleEditor: React.FC = () => {
                     <h3 className="text-lg font-medium">Live Preview</h3>
                     <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>Hide Preview</Button>
                   </div>
-                  <div className="prose max-w-none border p-4 rounded-md min-h-[300px]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                  <div className="prose max-w-none border p-4 rounded-md min-h-[300px]" dangerouslySetInnerHTML={{ __html: content }} />
                 </div>
               )}
               

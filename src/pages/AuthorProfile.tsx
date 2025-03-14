@@ -1,16 +1,22 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import ArticleCard from '@/components/ArticleCard';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
 
-const AuthorProfileContent: React.FC = () => {
+const AuthorProfile: React.FC = () => {
   const { authorId } = useParams<{ authorId: string }>();
-  const { authors, articles } = useData();
+  const { authors, articles, getAuthorById } = useData();
   
-  const author = authors.find(a => a.id === authorId);
+  const author = authorId ? getAuthorById(authorId) : null;
+  
+  // Track author page view for analytics
+  useEffect(() => {
+    // Analytics tracking could be added here
+    console.log(`Author profile viewed: ${author?.name || 'Unknown'}`);
+  }, [author]);
   
   if (!author) {
     return (
@@ -71,14 +77,6 @@ const AuthorProfileContent: React.FC = () => {
       
       <Footer />
     </>
-  );
-};
-
-const AuthorProfile: React.FC = () => {
-  return (
-    <DataProvider>
-      <AuthorProfileContent />
-    </DataProvider>
   );
 };
 

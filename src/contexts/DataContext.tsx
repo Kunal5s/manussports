@@ -38,6 +38,7 @@ export interface Earnings {
   articleId: string;
   date: string;
   amount: number;
+  viewerIp?: string; // To track unique viewers
 }
 
 export interface Withdrawal {
@@ -64,8 +65,9 @@ interface DataContextType {
   getAuthorById: (id: string) => Author | undefined;
   updatePaypalEmail: (email: string) => void;
   requestWithdrawal: (amount: number) => void;
-  recordEarnings: (articleId: string, amount: number) => void;
+  recordEarnings: (articleId: string, amount: number, viewerIp?: string) => void;
   addArticleView: (articleId: string) => void;
+  getArticlesByCategory: (category: CategoryType) => Article[];
 }
 
 // Initial authors
@@ -205,6 +207,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return articles.find(article => article.id === id);
   };
 
+  const getArticlesByCategory = (category: CategoryType) => {
+    return articles.filter(article => article.category === category);
+  };
+
   // Author methods
   const addAuthor = (author: Omit<Author, 'id'>) => {
     const newAuthor: Author = {
@@ -247,18 +253,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const recordEarnings = (articleId: string, amount: number) => {
+  const recordEarnings = (articleId: string, amount: number, viewerIp?: string) => {
+    // Check if we already have earnings from this IP for this article
+    if (viewerIp && earnings.some(e => e.articleId === articleId && e.viewerIp === viewerIp)) {
+      return; // Already recorded earnings from this viewer
+    }
+
     const newEarning: Earnings = {
       id: Date.now().toString(),
       articleId,
       date: new Date().toISOString(),
-      amount
+      amount,
+      viewerIp
     };
     setEarnings([...earnings, newEarning]);
     setWalletBalance(walletBalance + amount);
   };
 
   const addArticleView = (articleId: string) => {
+    const article = articles.find(a => a.id === articleId);
+    if (!article) return;
+
+    // Update article views
     setArticles(articles.map(article => {
       if (article.id === articleId) {
         const updatedViews = { ...article.views };
@@ -286,12 +302,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return article;
     }));
     
-    // Calculate earnings based on article read time
-    const article = articles.find(a => a.id === articleId);
-    if (article && !earnings.some(e => e.articleId === articleId)) {
+    // Get visitor IP (mock for demo purposes)
+    const mockIp = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+    
+    // Calculate earnings based on read time
+    if (article) {
       // $5 per minute of reading time
       const earningsAmount = 5 * article.readTime;
-      recordEarnings(articleId, earningsAmount);
+      recordEarnings(articleId, earningsAmount, mockIp);
     }
   };
 
@@ -314,7 +332,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatePaypalEmail,
       requestWithdrawal,
       recordEarnings,
-      addArticleView
+      addArticleView,
+      getArticlesByCategory
     }}>
       {children}
     </DataContext.Provider>

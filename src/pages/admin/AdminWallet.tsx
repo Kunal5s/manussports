@@ -28,7 +28,7 @@ type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
 const AdminWallet: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal } = useData();
+  const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal, getArticleById } = useData();
   const { toast } = useToast();
   const [newPaypalEmail, setNewPaypalEmail] = useState(paypalEmail || '');
 
@@ -161,7 +161,7 @@ const AdminWallet: React.FC = () => {
                     <tbody>
                       {earnings.length > 0 ? (
                         earnings.map((earning) => {
-                          const article = useData().getArticleById(earning.articleId);
+                          const article = getArticleById(earning.articleId);
                           return (
                             <tr key={earning.id} className="border-b">
                               <td className="px-4 py-3">{new Date(earning.date).toLocaleDateString()}</td>

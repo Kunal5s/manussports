@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, BarChart3, Wallet, Users, Home, LogOut } from 'lucide-react';
+import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DataProvider, useData } from '@/contexts/DataContext';
 
@@ -48,6 +48,17 @@ const AdminSidebarContent: React.FC = () => {
               </Link>
             </li>
           ))}
+          
+          {/* Link back to main website */}
+          <li>
+            <Link 
+              to="/"
+              className="flex items-center space-x-3 p-3 rounded-md text-gray-600 hover:bg-gray-200 hover:text-black transition-colors"
+            >
+              <Globe size={18} />
+              <span>View Website</span>
+            </Link>
+          </li>
         </ul>
       </nav>
       

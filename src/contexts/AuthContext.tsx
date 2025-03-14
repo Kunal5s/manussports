@@ -32,27 +32,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Check for existing session on initial load and when localStorage changes
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('manusSportsUser');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-        
-        // Redirect to admin dashboard if user is on login page but already authenticated
-        if (location.pathname === '/login') {
-          navigate('/admin');
+    const checkAuth = () => {
+      const storedUser = localStorage.getItem('manusSportsUser');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          
+          // Redirect to admin dashboard if user is on login page but already authenticated
+          if (location.pathname === '/login') {
+            navigate('/admin');
+          }
+        } catch (error) {
+          console.error('Failed to parse stored user:', error);
+          localStorage.removeItem('manusSportsUser');
+          setUser(null);
+          setIsAuthenticated(false);
         }
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('manusSportsUser');
+      } else if (location.pathname.includes('/admin') && !isAuthenticated) {
+        // Redirect to login if trying to access admin pages without authentication
+        navigate('/login');
       }
-    } else if (location.pathname.includes('/admin') && !isAuthenticated) {
-      // Redirect to login if trying to access admin pages without authentication
-      navigate('/login');
-    }
+    };
+
+    // Check auth on mount
+    checkAuth();
+
+    // Setup event listener for storage changes (for multi-tab support)
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, [location.pathname, navigate, isAuthenticated]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
