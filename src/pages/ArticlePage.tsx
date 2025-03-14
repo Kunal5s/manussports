@@ -1,13 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
 import { Clock, Eye, User, Calendar } from 'lucide-react';
 
-const ArticlePageContent: React.FC = () => {
+const ArticlePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { articles, authors, addArticleView } = useData();
@@ -124,7 +124,7 @@ const ArticlePageContent: React.FC = () => {
         </div>
         
         {/* Reading time indicator (hidden in production) */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV !== 'production' && (
           <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded-lg opacity-70">
             Reading: {Math.floor(readingTimeElapsed / 60)}m {readingTimeElapsed % 60}s
             {readComplete && " (Completed)"}
@@ -134,14 +134,6 @@ const ArticlePageContent: React.FC = () => {
       
       <Footer />
     </>
-  );
-};
-
-const ArticlePage: React.FC = () => {
-  return (
-    <DataProvider>
-      <ArticlePageContent />
-    </DataProvider>
   );
 };
 

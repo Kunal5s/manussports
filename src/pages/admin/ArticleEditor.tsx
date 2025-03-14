@@ -1,7 +1,12 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, List, ListOrdered, Heading1, Heading2, Heading3, Link as LinkIcon, Image, FileText } from 'lucide-react';
+import { 
+  Save, ArrowLeft, Upload, Bold, Italic, AlignLeft, AlignCenter, AlignRight, 
+  List, ListOrdered, Heading1, Heading2, Heading3, Link as LinkIcon, 
+  Image, FileText, Video, Type, Underline, Code, Quote, Undo, Redo,
+  PaintBucket, AlignJustify, Clipboard, Strikethrough, Superscript, Subscript
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +16,14 @@ import AdminSidebar from '@/components/AdminSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData, CategoryType } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 
 const ArticleEditor: React.FC = () => {
   const { articleId } = useParams<{ articleId: string }>();
@@ -19,6 +32,7 @@ const ArticleEditor: React.FC = () => {
   const { articles, authors, addArticle, updateArticle, getArticleById } = useData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const contentEditorRef = useRef<HTMLDivElement>(null);
   
   const [title, setTitle] = useState('');
@@ -30,6 +44,11 @@ const ArticleEditor: React.FC = () => {
   const [featuredImage, setFeaturedImage] = useState('/public/placeholder.svg');
   const [wordCount, setWordCount] = useState(0);
   const [showPreview, setShowPreview] = useState(true);
+  const [fontSize, setFontSize] = useState(16);
+  const [textColor, setTextColor] = useState('#000000');
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
   
   const isEditMode = !!articleId;
   
@@ -81,6 +100,14 @@ const ArticleEditor: React.FC = () => {
     // Estimate read time: average reading speed is about 250 words per minute
     const estimatedReadTime = Math.max(1, Math.ceil(words.length / 250));
     setReadTime(estimatedReadTime);
+  };
+  
+  const saveContentState = () => {
+    if (contentEditorRef.current) {
+      const currentContent = contentEditorRef.current.innerHTML;
+      setUndoStack(prev => [...prev, currentContent]);
+      setRedoStack([]);
+    }
   };
   
   const handleContentChange = () => {
@@ -135,14 +162,40 @@ const ArticleEditor: React.FC = () => {
     navigate('/admin/articles');
   };
   
+  const handleUndo = () => {
+    if (undoStack.length > 0) {
+      const prevContent = undoStack[undoStack.length - 1];
+      setUndoStack(prev => prev.slice(0, -1));
+      
+      if (contentEditorRef.current) {
+        setRedoStack(prev => [...prev, contentEditorRef.current.innerHTML]);
+        contentEditorRef.current.innerHTML = prevContent;
+        handleContentChange();
+      }
+    }
+  };
+  
+  const handleRedo = () => {
+    if (redoStack.length > 0) {
+      const nextContent = redoStack[redoStack.length - 1];
+      setRedoStack(prev => prev.slice(0, -1));
+      
+      if (contentEditorRef.current) {
+        setUndoStack(prev => [...prev, contentEditorRef.current.innerHTML]);
+        contentEditorRef.current.innerHTML = nextContent;
+        handleContentChange();
+      }
+    }
+  };
+  
   const insertFormatting = (format: string) => {
     if (!contentEditorRef.current) return;
     
+    saveContentState();
     const selection = window.getSelection();
     if (!selection) return;
 
     const range = selection.getRangeAt(0);
-    let element;
     
     switch(format) {
       case 'h1':
@@ -154,11 +207,20 @@ const ArticleEditor: React.FC = () => {
       case 'h3':
         document.execCommand('formatBlock', false, 'h3');
         break;
+      case 'p':
+        document.execCommand('formatBlock', false, 'p');
+        break;
       case 'bold':
         document.execCommand('bold', false);
         break;
       case 'italic':
         document.execCommand('italic', false);
+        break;
+      case 'underline':
+        document.execCommand('underline', false);
+        break;
+      case 'strikethrough':
+        document.execCommand('strikeThrough', false);
         break;
       case 'ul':
         document.execCommand('insertUnorderedList', false);
@@ -166,12 +228,72 @@ const ArticleEditor: React.FC = () => {
       case 'ol':
         document.execCommand('insertOrderedList', false);
         break;
+      case 'alignLeft':
+        document.execCommand('justifyLeft', false);
+        break;
+      case 'alignCenter':
+        document.execCommand('justifyCenter', false);
+        break;
+      case 'alignRight':
+        document.execCommand('justifyRight', false);
+        break;
+      case 'alignJustify':
+        document.execCommand('justifyFull', false);
+        break;
+      case 'indent':
+        document.execCommand('indent', false);
+        break;
+      case 'outdent':
+        document.execCommand('outdent', false);
+        break;
+      case 'superscript':
+        document.execCommand('superscript', false);
+        break;
+      case 'subscript':
+        document.execCommand('subscript', false);
+        break;
+      case 'quote':
+        document.execCommand('formatBlock', false, 'blockquote');
+        break;
+      case 'code':
+        document.execCommand('formatBlock', false, 'pre');
+        const pre = document.createElement('code');
+        if (range.collapsed) {
+          pre.textContent = 'code';
+          range.insertNode(pre);
+        } else {
+          const content = range.extractContents();
+          pre.appendChild(content);
+          range.insertNode(pre);
+        }
+        break;
       case 'link':
         const url = prompt('Enter URL:');
         if (url) document.execCommand('createLink', false, url);
         break;
       case 'image':
         if (fileInputRef.current) fileInputRef.current.click();
+        break;
+      case 'video':
+        if (videoInputRef.current) videoInputRef.current.click();
+        break;
+      case 'fontSize':
+        document.execCommand('fontSize', false, '3'); // Default size
+        if (selection && !selection.isCollapsed) {
+          const span = document.createElement('span');
+          span.style.fontSize = `${fontSize}px`;
+          
+          const range = selection.getRangeAt(0);
+          const content = range.extractContents();
+          span.appendChild(content);
+          range.insertNode(span);
+        }
+        break;
+      case 'textColor':
+        document.execCommand('foreColor', false, textColor);
+        break;
+      case 'backgroundColor':
+        document.execCommand('hiliteColor', false, backgroundColor);
         break;
       default:
         break;
@@ -222,6 +344,8 @@ const ArticleEditor: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    saveContentState();
+    
     // Create a FileReader to read the file
     const reader = new FileReader();
     
@@ -249,6 +373,52 @@ const ArticleEditor: React.FC = () => {
     
     // Read the file as a data URL
     reader.readAsDataURL(file);
+  };
+  
+  const handleContentVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    saveContentState();
+    
+    // Create a FileReader to read the file
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      if (event.target?.result && contentEditorRef.current) {
+        // Insert video at current selection position
+        const videoUrl = event.target.result as string;
+        document.execCommand('insertHTML', false, `
+          <video controls class="w-full h-auto my-2">
+            <source src="${videoUrl}" type="${file.type}">
+            Your browser does not support the video tag.
+          </video>
+        `);
+        handleContentChange();
+        
+        toast({
+          title: "Video inserted",
+          description: "Video has been added to the article.",
+        });
+      }
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: "Upload failed",
+        description: "There was a problem uploading your video.",
+        variant: "destructive",
+      });
+    };
+    
+    // Read the file as a data URL
+    reader.readAsDataURL(file);
+  };
+  
+  const applyFormatting = (command: string, value?: string) => {
+    saveContentState();
+    document.execCommand(command, false, value);
+    handleContentChange();
   };
   
   return (
@@ -292,54 +462,316 @@ const ArticleEditor: React.FC = () => {
                 
                 <div>
                   <Label htmlFor="content">Article Content</Label>
-                  <div className="border rounded-md mb-2">
-                    <div className="flex flex-wrap items-center border-b p-2 gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h1')}>
-                        <Heading1 size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h2')}>
-                        <Heading2 size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('h3')}>
-                        <Heading3 size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('bold')}>
-                        <Bold size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('italic')}>
-                        <Italic size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('ul')}>
-                        <List size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('ol')}>
-                        <ListOrdered size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('link')}>
-                        <LinkIcon size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => insertFormatting('image')}>
-                        <Image size={16} />
-                      </Button>
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      onChange={handleContentImageUpload}
-                      accept="image/*"
-                    />
-                    <div 
-                      ref={contentEditorRef}
-                      className="p-3 min-h-[300px] focus:outline-none prose max-w-none"
-                      contentEditable
-                      onInput={handleContentChange}
-                      onBlur={handleContentChange}
-                      dangerouslySetInnerHTML={{ __html: content }}
-                    />
-                    <div className="flex justify-between items-center border-t p-2 text-xs text-gray-500">
-                      <div>Word count: {wordCount} / 5000</div>
-                      <div>{wordCount < 500 ? 'Very short' : wordCount < 1000 ? 'Short' : wordCount < 2000 ? 'Medium' : 'Long'}</div>
-                    </div>
+                  <Tabs defaultValue="write" className="w-full">
+                    <TabsList className="mb-2">
+                      <TabsTrigger value="write">Write</TabsTrigger>
+                      <TabsTrigger value="format">Format</TabsTrigger>
+                      <TabsTrigger value="insert">Insert</TabsTrigger>
+                      <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="write">
+                      <div className="flex flex-wrap items-center border-b p-2 gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('h1')}>
+                                <Heading1 size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Heading 1</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('h2')}>
+                                <Heading2 size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Heading 2</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('h3')}>
+                                <Heading3 size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Heading 3</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('p')}>
+                                <Type size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Paragraph</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('bold')}>
+                                <Bold size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Bold</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('italic')}>
+                                <Italic size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Italic</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('underline')}>
+                                <Underline size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Underline</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('link')}>
+                                <LinkIcon size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Insert Link</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="format">
+                      <div className="flex flex-wrap items-center border-b p-2 gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('ul')}>
+                                <List size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Bullet List</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('ol')}>
+                                <ListOrdered size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Numbered List</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('alignLeft')}>
+                                <AlignLeft size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Align Left</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('alignCenter')}>
+                                <AlignCenter size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Align Center</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('alignRight')}>
+                                <AlignRight size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Align Right</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('alignJustify')}>
+                                <AlignJustify size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Justify</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('quote')}>
+                                <Quote size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Quote</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('code')}>
+                                <Code size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Code</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="insert">
+                      <div className="flex flex-wrap items-center border-b p-2 gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('image')}>
+                                <Image size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Insert Image</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('video')}>
+                                <Video size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Insert Video</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('strikethrough')}>
+                                <Strikethrough size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Strikethrough</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('superscript')}>
+                                <Superscript size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Superscript</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => insertFormatting('subscript')}>
+                                <Subscript size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Subscript</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="advanced">
+                      <div className="flex flex-wrap items-center border-b p-2 gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={handleUndo}>
+                                <Undo size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Undo</TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={handleRedo}>
+                                <Redo size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Redo</TooltipContent>
+                          </Tooltip>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Label>Font Size:</Label>
+                            <div className="w-28">
+                              <Slider
+                                value={[fontSize]}
+                                min={8}
+                                max={36}
+                                step={1}
+                                onValueChange={(value) => setFontSize(value[0])}
+                                onValueCommit={() => insertFormatting('fontSize')}
+                              />
+                            </div>
+                            <span>{fontSize}px</span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Label>Text Color:</Label>
+                            <input 
+                              type="color" 
+                              value={textColor}
+                              onChange={(e) => setTextColor(e.target.value)}
+                              onBlur={() => insertFormatting('textColor')}
+                              className="cursor-pointer"
+                            />
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Label>Background:</Label>
+                            <input 
+                              type="color" 
+                              value={backgroundColor}
+                              onChange={(e) => setBackgroundColor(e.target.value)}
+                              onBlur={() => insertFormatting('backgroundColor')}
+                              className="cursor-pointer"
+                            />
+                          </div>
+                        </TooltipProvider>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleContentImageUpload}
+                    accept="image/*"
+                  />
+                  
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    ref={videoInputRef}
+                    onChange={handleContentVideoUpload}
+                    accept="video/*"
+                  />
+                  
+                  <div 
+                    ref={contentEditorRef}
+                    className="p-3 min-h-[300px] focus:outline-none prose max-w-none border rounded-md"
+                    contentEditable
+                    onInput={handleContentChange}
+                    onBlur={handleContentChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        saveContentState();
+                      }
+                    }}
+                    dangerouslySetInnerHTML={{ __html: content }}
+                  />
+                  
+                  <div className="flex justify-between items-center p-2 text-xs text-gray-500">
+                    <div>Word count: {wordCount} / 5000</div>
+                    <div>{wordCount < 500 ? 'Very short' : wordCount < 1000 ? 'Short' : wordCount < 2000 ? 'Medium' : 'Long'}</div>
                   </div>
                 </div>
               </div>

@@ -3,9 +3,9 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, BarChart3, Wallet, Users, Home, LogOut, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
 
-const AdminSidebarContent: React.FC = () => {
+const AdminSidebar: React.FC = () => {
   const location = useLocation();
   const { logout } = useAuth();
   const { walletBalance } = useData();
@@ -72,14 +72,6 @@ const AdminSidebarContent: React.FC = () => {
         </button>
       </div>
     </div>
-  );
-};
-
-const AdminSidebar: React.FC = () => {
-  return (
-    <DataProvider>
-      <AdminSidebarContent />
-    </DataProvider>
   );
 };
 

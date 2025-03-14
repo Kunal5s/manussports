@@ -31,6 +31,7 @@ const AuthorProfile: React.FC = () => {
     );
   }
   
+  // Get all articles written by this author
   const authorArticles = articles.filter(article => article.authorId === authorId);
   
   return (

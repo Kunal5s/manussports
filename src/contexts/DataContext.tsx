@@ -168,7 +168,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         yearly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       }
     };
-    setArticles([...articles, newArticle]);
+    setArticles(prev => [...prev, newArticle]);
     
     // Update author's articles list
     const author = authors.find(a => a.id === article.authorId);
@@ -308,7 +308,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Calculate earnings based on read time
     if (article) {
       // $5 per minute of reading time
-      const earningsAmount = 5 * article.readTime;
+      const earningsAmount = 5 * (article.readTime || 1);
       recordEarnings(articleId, earningsAmount, mockIp);
     }
   };
