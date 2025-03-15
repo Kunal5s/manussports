@@ -1,11 +1,12 @@
 
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { Home, ArrowLeft } from "lucide-react";
+import { Home, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.error(
@@ -13,6 +14,10 @@ const NotFound = () => {
       location.pathname
     );
   }, [location.pathname]);
+
+  const handleReload = () => {
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
@@ -36,6 +41,15 @@ const NotFound = () => {
             Go Back
           </Button>
         </div>
+        <div className="mt-4">
+          <Button variant="ghost" className="w-full flex items-center gap-2 mt-4" onClick={handleReload}>
+            <RefreshCw size={18} />
+            Reload Page
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500 mt-6">
+          If you continue to see this page, please contact support or try clearing your browser cache.
+        </p>
       </div>
     </div>
   );

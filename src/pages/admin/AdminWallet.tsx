@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,8 +20,8 @@ import { usePaypal } from '@/hooks/use-paypal';
 const withdrawalSchema = z.object({
   amount: z.coerce.number()
     .positive("Amount must be positive")
-    .min(10, "Minimum withdrawal amount is ₹10")
-    .max(1000, "Maximum withdrawal amount is ₹1000"),
+    .min(10, "Minimum withdrawal amount is $10")
+    .max(1000, "Maximum withdrawal amount is $1000"),
   bankAccount: z.string().optional(),
 });
 
@@ -29,6 +29,7 @@ type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
 
 const AdminWallet: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { walletBalance, earnings, withdrawals, paypalEmail, updatePaypalEmail, requestWithdrawal, getArticleById } = useData();
   const { toast } = useToast();
@@ -39,6 +40,28 @@ const AdminWallet: React.FC = () => {
   const isMobile = useIsMobile();
   
   const paypal = usePaypal();
+
+  useEffect(() => {
+    if (location.search.includes('code=')) {
+      const params = new URLSearchParams(location.search);
+      const code = params.get('code');
+      
+      if (code) {
+        try {
+          paypal.handlePayPalCallback(code);
+          navigate('/admin/wallet', { replace: true });
+        } catch (error) {
+          console.error("Error handling PayPal callback:", error);
+          setIsPaypalError(true);
+          toast({
+            title: "PayPal Connection Error",
+            description: "Failed to connect your PayPal account. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+  }, [location, navigate, paypal, toast]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -114,7 +137,7 @@ const AdminWallet: React.FC = () => {
         setTimeout(() => {
           toast({
             title: "Bank Transfer Initiated",
-            description: `₹${data.amount.toFixed(2)} is being transferred to your bank account ending in ${data.bankAccount.slice(-4)}`,
+            description: `$${data.amount.toFixed(2)} is being transferred to your bank account ending in ${data.bankAccount.slice(-4)}`,
           });
         }, 1000);
       }
@@ -150,7 +173,7 @@ const AdminWallet: React.FC = () => {
               <CardDescription>Total Earnings</CardDescription>
               <CardTitle className="text-xl md:text-3xl flex items-center text-green-600">
                 <ArrowUp className="h-5 w-5 md:h-6 md:w-6 mr-1" />
-                ₹{totalEarnings.toFixed(2)}
+                ${totalEarnings.toFixed(2)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -160,7 +183,7 @@ const AdminWallet: React.FC = () => {
               <CardDescription>Total Withdrawals</CardDescription>
               <CardTitle className="text-xl md:text-3xl flex items-center text-blue-600">
                 <ArrowDown className="h-5 w-5 md:h-6 md:w-6 mr-1" />
-                ₹{totalWithdrawals.toFixed(2)}
+                ${totalWithdrawals.toFixed(2)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -282,6 +305,16 @@ const AdminWallet: React.FC = () => {
                       >
                         Connect with PayPal
                       </Button>
+                      
+                      {isPaypalError && (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Connection Error</AlertTitle>
+                          <AlertDescription>
+                            There was an error connecting to PayPal. Please try again later.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -387,7 +420,7 @@ const AdminWallet: React.FC = () => {
                       name="amount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Withdrawal Amount (₹)</FormLabel>
+                          <FormLabel>Withdrawal Amount ($)</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter amount"
@@ -425,7 +458,7 @@ const AdminWallet: React.FC = () => {
                     
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500">
-                        Available: ₹{walletBalance.toFixed(2)}
+                        Available: ${walletBalance.toFixed(2)}
                       </div>
                       <Button 
                         type="submit" 
