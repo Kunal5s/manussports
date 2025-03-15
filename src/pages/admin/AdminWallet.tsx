@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '@/components/AdminSidebar';
@@ -15,6 +16,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+// PayPal server endpoint
+const PAYPAL_SERVER_URL = "http://localhost:3000";
 
 const withdrawalSchema = z.object({
   amount: z.coerce.number()
@@ -35,13 +39,24 @@ const AdminWallet: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [bankAccount, setBankAccount] = useState('');
   const [isPaypalError, setIsPaypalError] = useState(false);
+  const [isPaypalConnected, setIsPaypalConnected] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, navigate]);
+    
+    // Check if PayPal is connected via localStorage
+    const storedPaypalEmail = localStorage.getItem("paypal_email");
+    if (storedPaypalEmail) {
+      setIsPaypalConnected(true);
+      if (!paypalEmail) {
+        updatePaypalEmail(storedPaypalEmail);
+        setNewPaypalEmail(storedPaypalEmail);
+      }
+    }
+  }, [isAuthenticated, navigate, paypalEmail, updatePaypalEmail]);
 
   const totalEarnings = earnings.reduce((total, earning) => total + earning.amount, 0);
   
@@ -72,31 +87,30 @@ const AdminWallet: React.FC = () => {
     });
   };
 
-  const processPaypalWithdrawal = async (amount: number) => {
+  const connectPayPal = () => {
+    // Redirect to PayPal connect page via the server
+    window.location.href = `${PAYPAL_SERVER_URL}/?connect=true`;
+  };
+
+  const processServerWithdrawal = async (amount: number, email: string) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`${PAYPAL_SERVER_URL}/withdraw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, amount })
+      });
       
-      const mockResponse = {
-        batch_header: {
-          payout_batch_id: "PAYOUTBATCH-" + Math.random().toString(36).substring(2, 15),
-          batch_status: "SUCCESS"
-        },
-        items: [
-          {
-            transaction_id: "TRANS-" + Math.random().toString(36).substring(2, 10),
-            transaction_status: "SUCCESS",
-            payout_item_id: "ITEM-" + Math.random().toString(36).substring(2, 10)
-          }
-        ]
-      };
+      if (!response.ok) {
+        throw new Error("Server withdrawal failed");
+      }
       
-      console.log("PayPal API Response:", mockResponse);
-      
-      return mockResponse;
+      const data = await response.json();
+      console.log("PayPal API Response:", data);
+      return data;
     } catch (error) {
-      console.error("PayPal API Error:", error);
+      console.error("PayPal Server Error:", error);
       setIsPaypalError(true);
-      throw new Error("Failed to process PayPal withdrawal");
+      throw new Error("Failed to process server withdrawal");
     }
   };
 
@@ -123,8 +137,10 @@ const AdminWallet: React.FC = () => {
     setIsPaypalError(false);
 
     try {
-      const paypalResponse = await processPaypalWithdrawal(data.amount);
+      // Use the server endpoint for withdrawal
+      const serverResponse = await processServerWithdrawal(data.amount, paypalEmail);
       
+      // Record the withdrawal in our local state
       requestWithdrawal(data.amount);
       
       toast({
@@ -304,22 +320,37 @@ const AdminWallet: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6 max-w-md">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">PayPal Email</label>
-                    <Input 
-                      type="email" 
-                      className="w-full px-3 py-2 border rounded-md" 
-                      placeholder="your.email@example.com"
-                      value={newPaypalEmail}
-                      onChange={(e) => setNewPaypalEmail(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    onClick={handlePaypalUpdate}
-                    className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
-                  >
-                    Update PayPal Email
-                  </Button>
+                  {!isPaypalConnected ? (
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Connect Your PayPal Account</h3>
+                      <p className="text-sm text-gray-600">
+                        Connect your PayPal account to enable instant withdrawals to your account.
+                      </p>
+                      <Button
+                        onClick={connectPayPal}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                      >
+                        Connect with PayPal
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Check className="h-5 w-5 text-green-500" />
+                        <span className="font-medium">PayPal Account Connected</span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Your PayPal account ({paypalEmail}) is connected for instant withdrawals.
+                      </p>
+                      <Button
+                        onClick={connectPayPal}
+                        variant="outline"
+                        className="px-4 py-2"
+                      >
+                        Reconnect PayPal
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="space-y-2 mt-6 pt-6 border-t">
                     <label className="text-sm font-medium">Bank Account (for direct transfers)</label>
@@ -350,7 +381,7 @@ const AdminWallet: React.FC = () => {
                     <h3 className="font-medium mb-2">PayPal Integration Info</h3>
                     <p className="text-sm">
                       Your earnings are automatically sent to your PayPal account within 5 minutes of withdrawal request. 
-                      Make sure your PayPal email is correct to avoid delays.
+                      Make sure your PayPal account is connected to avoid delays.
                     </p>
                     <div className="mt-2 flex">
                       <a 
@@ -375,7 +406,7 @@ const AdminWallet: React.FC = () => {
                 <CardTitle>Request Withdrawal</CardTitle>
                 <CardDescription>
                   Withdraw your earnings to PayPal instantly
-                  {!paypalEmail && ' (Please set your PayPal email first)'}
+                  {!isPaypalConnected && ' (Please connect your PayPal account first)'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -385,6 +416,16 @@ const AdminWallet: React.FC = () => {
                     <AlertTitle>PayPal Connection Error</AlertTitle>
                     <AlertDescription>
                       There was an error connecting to PayPal. Please try again later or contact support.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {!isPaypalConnected && (
+                  <Alert className="mb-6">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>PayPal Not Connected</AlertTitle>
+                    <AlertDescription>
+                      To withdraw funds, you must first connect your PayPal account in the Payment Settings tab.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -404,7 +445,7 @@ const AdminWallet: React.FC = () => {
                               min={10}
                               max={walletBalance}
                               {...field}
-                              disabled={!paypalEmail || isProcessing}
+                              disabled={!isPaypalConnected || isProcessing}
                             />
                           </FormControl>
                           <FormMessage />
@@ -423,7 +464,7 @@ const AdminWallet: React.FC = () => {
                               placeholder="For direct bank transfer"
                               type="text"
                               {...field}
-                              disabled={!paypalEmail || isProcessing}
+                              disabled={!isPaypalConnected || isProcessing}
                             />
                           </FormControl>
                           <FormMessage />
@@ -438,16 +479,16 @@ const AdminWallet: React.FC = () => {
                       </div>
                       <Button 
                         type="submit" 
-                        disabled={!paypalEmail || walletBalance < 10 || isProcessing}
+                        disabled={!isPaypalConnected || walletBalance < 10 || isProcessing}
                         className={isProcessing ? "bg-gray-400" : ""}
                       >
                         {isProcessing ? "Processing PayPal Transfer..." : "Withdraw to PayPal"}
                       </Button>
                     </div>
 
-                    {walletBalance >= 10 && (
+                    {walletBalance >= 10 && isPaypalConnected && (
                       <div className="p-3 bg-blue-50 text-blue-700 rounded-md mt-4 text-sm">
-                        <p>Funds will be sent to your PayPal account (${paypalEmail}) within 5 minutes.</p>
+                        <p>Funds will be sent to your PayPal account immediately using direct API integration.</p>
                         {bankAccount && <p className="mt-1">Direct bank transfer will be initiated immediately after PayPal receives the funds.</p>}
                       </div>
                     )}
