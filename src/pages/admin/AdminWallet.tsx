@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminSidebar from '@/components/AdminSidebar';
@@ -99,11 +100,13 @@ const AdminWallet: React.FC = () => {
       return;
     }
     
-    updatePaypalEmail(newPaypalEmail);
-    toast({
-      title: "Success",
-      description: "PayPal email updated successfully",
-    });
+    if (paypal.connectPayPalWithEmail(newPaypalEmail)) {
+      updatePaypalEmail(newPaypalEmail);
+      toast({
+        title: "Success",
+        description: "PayPal email updated successfully",
+      });
+    }
   };
 
   const onWithdrawalSubmit = async (data: WithdrawalFormValues) => {
@@ -297,14 +300,23 @@ const AdminWallet: React.FC = () => {
                     <div className="space-y-4">
                       <h3 className="font-medium">Connect Your PayPal Account</h3>
                       <p className="text-sm text-gray-600">
-                        Connect your PayPal account to enable instant withdrawals to your account.
+                        Enter your PayPal email address to enable instant withdrawals to your account.
                       </p>
-                      <Button
-                        onClick={paypal.connectPayPal}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                      >
-                        Connect with PayPal
-                      </Button>
+                      <div className="flex flex-col space-y-2">
+                        <Input
+                          type="email"
+                          placeholder="Enter your PayPal email address"
+                          value={newPaypalEmail}
+                          onChange={(e) => setNewPaypalEmail(e.target.value)}
+                          className="w-full"
+                        />
+                        <Button
+                          onClick={handlePaypalUpdate}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                        >
+                          Connect PayPal Account
+                        </Button>
+                      </div>
                       
                       {isPaypalError && (
                         <Alert variant="destructive" className="mt-4">
@@ -325,13 +337,22 @@ const AdminWallet: React.FC = () => {
                       <p className="text-sm text-gray-600">
                         Your PayPal account ({paypalEmail}) is connected for instant withdrawals.
                       </p>
-                      <Button
-                        onClick={paypal.connectPayPal}
-                        variant="outline"
-                        className="px-4 py-2"
-                      >
-                        Reconnect PayPal
-                      </Button>
+                      <div className="flex flex-col space-y-2">
+                        <Input
+                          type="email"
+                          placeholder="Update PayPal email address"
+                          value={newPaypalEmail}
+                          onChange={(e) => setNewPaypalEmail(e.target.value)}
+                          className="w-full"
+                        />
+                        <Button
+                          onClick={handlePaypalUpdate}
+                          variant="outline"
+                          className="px-4 py-2"
+                        >
+                          Update PayPal Email
+                        </Button>
+                      </div>
                     </div>
                   )}
 

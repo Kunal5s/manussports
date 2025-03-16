@@ -1,11 +1,5 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-
-// PayPal server endpoint
-const PAYPAL_CLIENT_ID = "AYRQN-xtLD7K-YSI8s17Dn-Fa-ZED3Yckdk9Yg7fwcUnkjASV1IpVkTOPsFv5qcpRtKm8Y3ts8H5IqK_";
-// Fallback to localhost for development
-const PAYPAL_SERVER_URL = import.meta.env.VITE_PAYPAL_SERVER_URL || "https://api-m.paypal.com";
 
 export function usePaypal() {
   const { toast } = useToast();
@@ -23,17 +17,37 @@ export function usePaypal() {
     }
   }, []);
 
-  // Connect to PayPal
+  // Connect to PayPal directly with email
+  const connectPayPalWithEmail = (email: string) => {
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Store the email in localStorage
+    localStorage.setItem("paypal_email", email);
+    setIsConnected(true);
+    setConnectedEmail(email);
+    
+    toast({
+      title: "PayPal Connected",
+      description: `Your PayPal account (${email}) has been successfully connected`,
+    });
+    
+    return true;
+  };
+
+  // Legacy OAuth connect method - keeping for backwards compatibility
   const connectPayPal = () => {
-    // Log the connection attempt
-    console.log("Attempting to connect to PayPal");
-    
-    // Prepare the PayPal OAuth URL - using direct PayPal URL since we have the client ID
-    const redirectUri = encodeURIComponent(window.location.origin + "/admin/wallet");
-    const paypalConnectUrl = `https://www.paypal.com/connect?flowEntry=static&client_id=${PAYPAL_CLIENT_ID}&scope=openid email profile&redirect_uri=${redirectUri}`;
-    
-    // Redirect to the PayPal OAuth page
-    window.location.href = paypalConnectUrl;
+    toast({
+      title: "PayPal Connection",
+      description: "Please use email connection method instead of OAuth",
+    });
+    return false;
   };
 
   // Process withdrawal
@@ -45,7 +59,6 @@ export function usePaypal() {
     
     try {
       // Simulate successful API call for demonstration
-      // In production, this would call your server endpoint
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
       
       // Store the withdrawal in localStorage
@@ -65,7 +78,7 @@ export function usePaypal() {
       
       toast({
         title: "Withdrawal Successful",
-        description: `$${amount.toFixed(2)} has been sent to your PayPal account`,
+        description: `$${amount.toFixed(2)} has been sent to your PayPal account (${email})`,
       });
       
       setIsLoading(false);
@@ -110,6 +123,7 @@ export function usePaypal() {
     isConnected: () => isConnected,
     getConnectedEmail: () => connectedEmail,
     connectPayPal,
+    connectPayPalWithEmail,
     processWithdrawal,
     handlePayPalCallback,
     isLoading,

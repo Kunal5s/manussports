@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import HomePage from "./pages/HomePage";
 import ArticlesPage from "./pages/ArticlesPage";
 import AboutPage from "./pages/AboutPage";
@@ -39,19 +39,41 @@ const queryClient = new QueryClient({
 // Component to handle initial Xata sync
 const XataInitializer = ({ children }: { children: React.ReactNode }) => {
   const { syncFromXata } = useXataStorage();
+  const [initialized, setInitialized] = useState(false);
   
   useEffect(() => {
-    // Check if articles already exist in localStorage
-    const articlesInStorage = localStorage.getItem('manusSportsArticles');
-    
-    // If no articles in storage or empty array, try to sync from Xata
-    if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
-      console.log("No articles found in localStorage, syncing from Xata");
-      syncFromXata().catch(err => {
+    const loadArticles = async () => {
+      try {
+        // Check if articles already exist in localStorage
+        const articlesInStorage = localStorage.getItem('manusSportsArticles');
+        
+        // If no articles in storage or empty array, try to sync from Xata
+        if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
+          console.log("No articles found in localStorage, syncing from Xata");
+          await syncFromXata();
+        }
+      } catch (err) {
         console.error("Failed to sync articles from Xata:", err);
-      });
-    }
+      } finally {
+        setInitialized(true);
+      }
+    };
+    
+    loadArticles();
   }, [syncFromXata]);
+  
+  // Show loading if not initialized
+  if (!initialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-xl font-medium mb-4">Loading Manus Sports...</h2>
+          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+          <p className="mt-4 text-gray-500">Synchronizing articles from cloud storage...</p>
+        </div>
+      </div>
+    );
+  }
   
   return <>{children}</>;
 };
