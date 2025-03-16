@@ -24,7 +24,7 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
-import { useGitHubStorage } from "./hooks/use-github-storage";
+import { useXataStorage } from "./hooks/use-xata-storage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,22 +36,22 @@ const queryClient = new QueryClient({
   },
 });
 
-// Component to handle initial GitHub sync
-const GitHubInitializer = ({ children }: { children: React.ReactNode }) => {
-  const { syncFromGitHub } = useGitHubStorage();
+// Component to handle initial Xata sync
+const XataInitializer = ({ children }: { children: React.ReactNode }) => {
+  const { syncFromXata } = useXataStorage();
   
   useEffect(() => {
     // Check if articles already exist in localStorage
     const articlesInStorage = localStorage.getItem('manusSportsArticles');
     
-    // If no articles in storage or empty array, try to sync from GitHub
+    // If no articles in storage or empty array, try to sync from Xata
     if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
-      console.log("No articles found in localStorage, syncing from GitHub");
-      syncFromGitHub().catch(err => {
-        console.error("Failed to sync articles from GitHub:", err);
+      console.log("No articles found in localStorage, syncing from Xata");
+      syncFromXata().catch(err => {
+        console.error("Failed to sync articles from Xata:", err);
       });
     }
-  }, [syncFromGitHub]);
+  }, [syncFromXata]);
   
   return <>{children}</>;
 };
@@ -64,7 +64,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <GitHubInitializer>
+            <XataInitializer>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/articles" element={<ArticlesPage />} />
@@ -86,7 +86,7 @@ const App = () => (
                 <Route path="/admin/authors" element={<AdminAuthors />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </GitHubInitializer>
+            </XataInitializer>
           </TooltipProvider>
         </AuthProvider>
       </DataProvider>

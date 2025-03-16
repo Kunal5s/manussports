@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Pencil, Trash2, Search, Save, Github } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, Search, Save, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,14 +24,14 @@ import AdminSidebar from '@/components/AdminSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
-import { useGitHubStorage } from '@/hooks/use-github-storage';
+import { useXataStorage } from '@/hooks/use-xata-storage';
 
 const AdminArticles: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { articles, authors, deleteArticle } = useData();
   const { toast } = useToast();
-  const { saveToGitHub, syncFromGitHub, isSyncing } = useGitHubStorage();
+  const { saveToXata, syncFromXata, isSyncing } = useXataStorage();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -58,18 +58,18 @@ const AdminArticles: React.FC = () => {
     if (articleToDelete) {
       deleteArticle(articleToDelete);
       
-      // Also delete from GitHub
+      // Also delete from Xata (through full backup)
       try {
-        await saveToGitHub(articles.filter(a => a.id !== articleToDelete));
+        await saveToXata(articles.filter(a => a.id !== articleToDelete));
         toast({
           title: "Article deleted",
-          description: "The article has been permanently deleted from local storage and GitHub.",
+          description: "The article has been permanently deleted from local storage and Xata.",
         });
       } catch (error) {
-        console.error("Error deleting article from GitHub:", error);
+        console.error("Error deleting article from Xata:", error);
         toast({
           title: "Partial deletion",
-          description: "Article deleted locally but failed to update GitHub. Changes will sync on next backup.",
+          description: "Article deleted locally but failed to update Xata. Changes will sync on next backup.",
           variant: "destructive",
         });
       }
@@ -79,36 +79,36 @@ const AdminArticles: React.FC = () => {
     }
   };
   
-  const handleSyncWithGitHub = async () => {
+  const handleSyncWithXata = async () => {
     try {
-      await syncFromGitHub();
+      await syncFromXata();
       toast({
         title: "Sync successful",
-        description: "Articles have been synchronized with GitHub repository.",
+        description: "Articles have been synchronized with Xata database.",
       });
       setSyncDialogOpen(false);
     } catch (error) {
-      console.error("Error syncing with GitHub:", error);
+      console.error("Error syncing with Xata:", error);
       toast({
         title: "Sync failed",
-        description: "Failed to sync articles with GitHub. Please try again.",
+        description: "Failed to sync articles with Xata. Please try again.",
         variant: "destructive",
       });
     }
   };
   
-  const handleBackupToGitHub = async () => {
+  const handleBackupToXata = async () => {
     try {
-      await saveToGitHub(articles);
+      await saveToXata(articles);
       toast({
         title: "Backup successful",
-        description: "All articles have been backed up to GitHub repository.",
+        description: "All articles have been backed up to Xata database.",
       });
     } catch (error) {
-      console.error("Error backing up to GitHub:", error);
+      console.error("Error backing up to Xata:", error);
       toast({
         title: "Backup failed",
-        description: "Failed to backup articles to GitHub. Please try again.",
+        description: "Failed to backup articles to Xata. Please try again.",
         variant: "destructive",
       });
     }
@@ -129,12 +129,12 @@ const AdminArticles: React.FC = () => {
             <h1 className="text-2xl font-bold">Manage Articles</h1>
             <div className="flex gap-2">
               <Button onClick={() => setSyncDialogOpen(true)} variant="outline">
-                <Github size={18} className="mr-2" />
-                Sync with GitHub
+                <Database size={18} className="mr-2" />
+                Sync with Xata
               </Button>
-              <Button onClick={handleBackupToGitHub} variant="outline">
+              <Button onClick={handleBackupToXata} variant="outline">
                 <Save size={18} className="mr-2" />
-                Backup to GitHub
+                Backup to Xata
               </Button>
               <Button onClick={() => navigate('/admin/articles/new')}>
                 <PlusCircle size={18} className="mr-2" />
@@ -227,7 +227,7 @@ const AdminArticles: React.FC = () => {
             <DialogTitle>Are you sure?</DialogTitle>
             <DialogDescription>
               This action cannot be undone. This will permanently delete the article
-              and remove its data from our servers and GitHub repository.
+              and remove its data from our servers and Xata database.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -241,14 +241,14 @@ const AdminArticles: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* GitHub Sync Dialog */}
+      {/* Xata Sync Dialog */}
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sync with GitHub</DialogTitle>
+            <DialogTitle>Sync with Xata</DialogTitle>
             <DialogDescription>
-              This will fetch the latest articles from your GitHub repository and merge them with your local articles.
-              Any conflicting articles will be resolved by keeping the GitHub version.
+              This will fetch the latest articles from your Xata database and merge them with your local articles.
+              Any conflicting articles will be resolved by keeping the Xata version.
             </DialogDescription>
           </DialogHeader>
           <div className="my-4">
@@ -261,7 +261,7 @@ const AdminArticles: React.FC = () => {
             <Button variant="outline" onClick={() => setSyncDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSyncWithGitHub} disabled={isSyncing}>
+            <Button onClick={handleSyncWithXata} disabled={isSyncing}>
               {isSyncing ? "Syncing..." : "Sync Now"}
             </Button>
           </DialogFooter>

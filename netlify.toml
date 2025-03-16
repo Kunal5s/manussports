@@ -14,3 +14,5 @@
     Access-Control-Allow-Origin = "*"
     Cache-Control = "no-store, no-cache"
     Pragma = "no-cache"
+    X-Content-Type-Options = "nosniff"
+
