@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 
-// Xata API details
+// Xata API details - using the correct format for the base URL
 const XATA_API_KEY = "xau_QNGaxjicleu6dFRunfVpoSZWD46BC3Ru6";
-const XATA_BASE_URL = "https://Kunal-Sonpitre-s-workspace-uftkup.eu-central-1.xata.sh/db/my_blog_db";
+const XATA_BASE_URL = "https://Kunal-Sonpitre-s-workspace-uftkup.eu-central-1.xata.sh/db/my_blog_db:main";
 
 export const useXataStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
@@ -80,11 +80,37 @@ export const useXataStorage = () => {
       
       if (!tableCheckResponse.ok) {
         if (tableCheckResponse.status === 404) {
-          // Table doesn't exist yet, we'll create it when we save articles
-          console.log("Articles table doesn't exist yet. Will be created on first save.");
+          // Create the articles table if it doesn't exist
+          console.log("Articles table doesn't exist yet. Creating it now.");
+          
+          // Create table structure - simplified for example
+          const createTableResponse = await fetch(`${XATA_BASE_URL}/tables`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${XATA_API_KEY}`,
+              'Content-Type': 'application/json',
+              'X-Xata-Agent': 'Manus Sports/1.0'
+            },
+            body: JSON.stringify({
+              name: "articles",
+              columns: [
+                { name: "title", type: "string" },
+                { name: "feature_image", type: "string" },
+                { name: "content", type: "text" },
+                { name: "link", type: "string" },
+                { name: "youtube_link", type: "string" }
+              ]
+            })
+          });
+          
+          if (!createTableResponse.ok) {
+            console.error("Failed to create articles table:", await createTableResponse.text());
+            throw new Error("Could not create articles table");
+          }
+          
           toast({
             title: "No articles found",
-            description: "No articles found in the database. Start by creating some!",
+            description: "Articles table created. Start by creating some articles!",
           });
           return;
         } else {
@@ -141,14 +167,14 @@ export const useXataStorage = () => {
         localStorage.removeItem('manusSportsArticles');
         localStorage.setItem('manusSportsArticles', JSON.stringify(loadedArticles));
         
+        toast({
+          title: "Sync successful",
+          description: `${loadedArticles.length} articles loaded from database.`,
+        });
+        
         // Force a page reload to refresh the DataContext with new articles
         window.location.reload();
       }
-      
-      toast({
-        title: "Sync successful",
-        description: `${loadedArticles.length} articles loaded from database.`,
-      });
     } catch (error) {
       console.error("Error syncing from Xata:", error);
       toast({
