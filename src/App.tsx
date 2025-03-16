@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import HomePage from "./pages/HomePage";
 import ArticlesPage from "./pages/ArticlesPage";
 import AboutPage from "./pages/AboutPage";
@@ -23,8 +24,37 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
+import { useGitHubStorage } from "./hooks/use-github-storage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
+// Component to handle initial GitHub sync
+const GitHubInitializer = ({ children }: { children: React.ReactNode }) => {
+  const { syncFromGitHub } = useGitHubStorage();
+  
+  useEffect(() => {
+    // Check if articles already exist in localStorage
+    const articlesInStorage = localStorage.getItem('manusSportsArticles');
+    
+    // If no articles in storage or empty array, try to sync from GitHub
+    if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
+      console.log("No articles found in localStorage, syncing from GitHub");
+      syncFromGitHub().catch(err => {
+        console.error("Failed to sync articles from GitHub:", err);
+      });
+    }
+  }, [syncFromGitHub]);
+  
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,27 +64,29 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/articles" element={<ArticlesPage />} />
-              <Route path="/articles/:category" element={<ArticlesPage />} />
-              <Route path="/article/:id" element={<ArticlePage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/author/:authorId" element={<AuthorProfile />} />
-              <Route path="/writer-guidelines" element={<WriterGuidelinesPage />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/articles" element={<AdminArticles />} />
-              <Route path="/admin/articles/edit/:articleId" element={<ArticleEditor />} />
-              <Route path="/admin/articles/new" element={<ArticleEditor />} />
-              <Route path="/admin/wallet" element={<AdminWallet />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/authors" element={<AdminAuthors />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <GitHubInitializer>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/articles" element={<ArticlesPage />} />
+                <Route path="/articles/:category" element={<ArticlesPage />} />
+                <Route path="/article/:id" element={<ArticlePage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/author/:authorId" element={<AuthorProfile />} />
+                <Route path="/writer-guidelines" element={<WriterGuidelinesPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/articles" element={<AdminArticles />} />
+                <Route path="/admin/articles/edit/:articleId" element={<ArticleEditor />} />
+                <Route path="/admin/articles/new" element={<ArticleEditor />} />
+                <Route path="/admin/wallet" element={<AdminWallet />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/authors" element={<AdminAuthors />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </GitHubInitializer>
           </TooltipProvider>
         </AuthProvider>
       </DataProvider>

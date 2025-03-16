@@ -12,3 +12,5 @@
   for = "/*"
     [headers.values]
     Access-Control-Allow-Origin = "*"
+    Cache-Control = "no-store, no-cache"
+    Pragma = "no-cache"

@@ -1,6 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const GITHUB_USERNAME = "Kunal5s";
 const REPO_NAME = "manussports";
@@ -11,8 +12,38 @@ const TOKEN = "github_pat_11BP2RTJQ0hjwX6edvUQZD_qswWgCcnelykQSyMiYtlp5mGUTc7Lag
 export const useGitHubStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { toast } = useToast();
 
   const API_URL = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+
+  // Auto-sync on initial load
+  useEffect(() => {
+    const initializeFromGitHub = async () => {
+      // Only load from GitHub if localStorage is empty or we're in a browser other than Chrome
+      const isMissingArticles = !localStorage.getItem('manusSportsArticles') || 
+                               JSON.parse(localStorage.getItem('manusSportsArticles') || '[]').length === 0;
+      
+      if (!isInitialized && isMissingArticles) {
+        console.log("Initializing articles from GitHub on first load");
+        try {
+          await syncFromGitHub();
+          setIsInitialized(true);
+        } catch (error) {
+          console.error("Failed to initialize articles from GitHub:", error);
+          toast({
+            title: "Initialization Failed",
+            description: "Could not load articles from GitHub. Please refresh or try again later.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeFromGitHub();
+  }, []);
 
   const saveToGitHub = async (articlesToSave: Article[]): Promise<void> => {
     try {
@@ -91,7 +122,9 @@ export const useGitHubStorage = () => {
         headers: {
           Authorization: `token ${TOKEN}`,
           Accept: "application/vnd.github.v3+json"
-        }
+        },
+        // Add cache-busting parameter to prevent browsers from caching the response
+        cache: "no-store"
       });
       
       if (!response.ok) {
@@ -144,6 +177,7 @@ export const useGitHubStorage = () => {
   return {
     saveToGitHub,
     syncFromGitHub,
-    isSyncing
+    isSyncing,
+    isInitialized
   };
 };
