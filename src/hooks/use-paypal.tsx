@@ -55,8 +55,6 @@ export function usePaypal() {
     setIsLoading(true);
     setError(null);
     
-    console.log("Processing withdrawal:", { amount, email });
-    
     try {
       // Simulate successful API call for demonstration
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
@@ -88,8 +86,6 @@ export function usePaypal() {
       if (error instanceof Error) {
         message = error.message;
       }
-      
-      console.error("PayPal Withdrawal Error:", message);
       
       setError(message);
       toast({

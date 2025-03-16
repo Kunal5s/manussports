@@ -40,6 +40,7 @@ const queryClient = new QueryClient({
 const XataInitializer = ({ children }: { children: React.ReactNode }) => {
   const { syncFromXata } = useXataStorage();
   const [initialized, setInitialized] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   
   useEffect(() => {
     const loadArticles = async () => {
@@ -49,11 +50,12 @@ const XataInitializer = ({ children }: { children: React.ReactNode }) => {
         
         // If no articles in storage or empty array, try to sync from Xata
         if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
-          console.log("No articles found in localStorage, syncing from Xata");
+          console.log("No articles found in localStorage, syncing from database");
           await syncFromXata();
         }
       } catch (err) {
-        console.error("Failed to sync articles from Xata:", err);
+        console.error("Failed to sync articles:", err);
+        setSyncError("Could not connect to database. Using local storage only.");
       } finally {
         setInitialized(true);
       }
@@ -69,13 +71,22 @@ const XataInitializer = ({ children }: { children: React.ReactNode }) => {
         <div className="text-center">
           <h2 className="text-xl font-medium mb-4">Loading Manus Sports...</h2>
           <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-500">Synchronizing articles from cloud storage...</p>
+          <p className="mt-4 text-gray-500">Loading articles from database...</p>
         </div>
       </div>
     );
   }
   
-  return <>{children}</>;
+  return (
+    <>
+      {syncError && (
+        <div className="bg-amber-50 text-amber-800 p-2 text-sm text-center">
+          {syncError} <button className="font-medium underline" onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      )}
+      {children}
+    </>
+  );
 };
 
 const App = () => (
