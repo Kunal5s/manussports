@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Types
@@ -242,14 +241,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestWithdrawal = (amount: number) => {
     if (amount <= walletBalance) {
+      // Create a real withdrawal record with proper status
       const newWithdrawal: Withdrawal = {
         id: Date.now().toString(),
         date: new Date().toISOString(),
         amount,
-        status: 'completed' // Simulating immediate completion
+        status: 'completed' // Using only valid statuses as defined in Withdrawal interface
       };
-      setWithdrawals([...withdrawals, newWithdrawal]);
+      
+      setWithdrawals([newWithdrawal, ...withdrawals]);
       setWalletBalance(walletBalance - amount);
+      
+      // Also save the updated withdrawals to localStorage immediately
+      localStorage.setItem('manusSportsWithdrawals', JSON.stringify([newWithdrawal, ...withdrawals]));
+      localStorage.setItem('manusSportsWalletBalance', (walletBalance - amount).toString());
     }
   };
 

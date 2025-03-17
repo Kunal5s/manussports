@@ -30,18 +30,40 @@ export const useXataStorage = () => {
         body: JSON.stringify({ articles: articlesToSave }),
       });
       
-      const data = await response.json();
-      
+      // Check if the response is OK before attempting to parse JSON
       if (!response.ok) {
-        console.error(`Failed to save articles: ${response.status}`, data);
+        const errorText = await response.text();
+        console.error(`Failed to save articles: ${response.status}`, errorText);
+        
+        toast({
+          title: "Error saving articles",
+          description: `Server returned ${response.status}: ${errorText.substring(0, 100)}...`,
+          variant: "destructive",
+        });
+        
         return false;
       }
       
+      const data = await response.json();
+      
       setLastSyncTime(new Date());
       console.log(`Successfully saved ${articlesToSave.length} articles to Xata`);
+      
+      toast({
+        title: "Articles saved",
+        description: `${articlesToSave.length} articles saved to database`,
+      });
+      
       return true;
     } catch (error) {
       console.error("Error saving to Xata:", error);
+      
+      toast({
+        title: "Error saving articles",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      
       return false;
     } finally {
       setIsSyncing(false);
@@ -53,27 +75,51 @@ export const useXataStorage = () => {
     try {
       setIsSyncing(true);
       
-      // Use Netlify's serverless function to fetch articles
-      const response = await fetch('/.netlify/functions/get-articles');
+      // Add cache-busting parameter to prevent browser caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/.netlify/functions/get-articles?t=${timestamp}`);
       
+      // Check if the response is OK first before trying to parse JSON
       if (!response.ok) {
-        console.error(`Failed to fetch articles: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Failed to fetch articles: ${response.status}`, errorText);
+        
+        toast({
+          title: "Error loading articles",
+          description: `Server returned ${response.status}: ${errorText.substring(0, 100)}...`,
+          variant: "destructive",
+        });
+        
         return false;
       }
       
+      // First get the response as text to validate it's JSON
       const responseText = await response.text();
       
-      // Check if the response is valid JSON
+      // Verify that the response is valid JSON
       try {
         const data = JSON.parse(responseText);
         
         if (!data.articles) {
           console.error("Invalid response format from get-articles:", data);
+          
+          toast({
+            title: "Error loading articles",
+            description: "Received invalid data format from server",
+            variant: "destructive",
+          });
+          
           return false;
         }
         
         if (data.articles.length === 0) {
           console.log("No articles found in database");
+          
+          toast({
+            title: "No articles found",
+            description: "The database has no articles stored",
+          });
+          
           return true; // Not an error, just no articles
         }
         
@@ -83,16 +129,35 @@ export const useXataStorage = () => {
         setLastSyncTime(new Date());
         console.log(`${data.articles.length} articles loaded from database.`);
         
+        toast({
+          title: "Articles loaded",
+          description: `${data.articles.length} articles loaded from database`,
+        });
+        
         // Refresh the page to update articles
         window.location.reload();
         return true;
       } catch (error) {
         console.error("Invalid JSON response from API:", error);
         console.error("Response text:", responseText.substring(0, 200)); // Log first 200 chars
+        
+        toast({
+          title: "Error loading articles",
+          description: "Server returned invalid data format",
+          variant: "destructive",
+        });
+        
         return false;
       }
     } catch (error) {
       console.error("Error syncing from Xata:", error);
+      
+      toast({
+        title: "Error loading articles",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      
       return false;
     } finally {
       setIsSyncing(false);

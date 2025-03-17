@@ -6,8 +6,12 @@ const { buildClient } = require('@xata.io/client');
 exports.getXataClient = () => {
   try {
     // Initialize the Xata client using environment variables set in Netlify
-    // No need to manually set XATA_API_KEY as it's configured in Netlify environment
-    const xata = buildClient();
+    // Set XATA_API_KEY and XATA_BRANCH explicitly to avoid issues
+    const xata = buildClient({
+      apiKey: process.env.XATA_API_KEY,
+      branch: process.env.XATA_BRANCH || 'main'
+    });
+    
     console.log("Xata client initialized successfully in Netlify function");
     
     // Check if we can access the database
