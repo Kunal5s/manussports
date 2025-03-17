@@ -38,18 +38,18 @@ export const WithdrawalsTable: React.FC = () => {
                   <span className="font-medium">Polar</span>
                 </td>
                 <td className="px-2 md:px-4 py-3">
-                  <span className="text-xs font-mono">{withdrawal.reference || withdrawal.id.substring(0, 8)}</span>
+                  <span className="text-xs font-mono">{withdrawal.id.substring(0, 8)}</span>
                 </td>
                 <td className="px-2 md:px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
                     withdrawal.status === 'completed' 
                       ? 'bg-green-100 text-green-800' 
-                      : withdrawal.status === 'processing'
+                      : withdrawal.status === 'pending'
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {withdrawal.status === 'completed' && <Check className="mr-1 h-3 w-3" />}
-                    {withdrawal.status === 'processing' && <RefreshCw className="mr-1 h-3 w-3 animate-spin" />}
+                    {withdrawal.status === 'pending' && <RefreshCw className="mr-1 h-3 w-3 animate-spin" />}
                     {withdrawal.status === 'failed' && <AlertTriangle className="mr-1 h-3 w-3" />}
                     {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
                   </span>
