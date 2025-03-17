@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { useData } from '@/contexts/DataContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const TransactionsTable: React.FC = () => {
   const { earnings, getArticleById } = useData();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   return (
     <div className="rounded-md border">
@@ -16,7 +18,17 @@ export const TransactionsTable: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {earnings.length > 0 ? (
+          {isLoading ? (
+            <tr>
+              <td colSpan={3} className="p-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </td>
+            </tr>
+          ) : earnings.length > 0 ? (
             earnings.map((earning) => {
               const article = getArticleById(earning.articleId);
               return (

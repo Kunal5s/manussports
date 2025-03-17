@@ -14,21 +14,34 @@ exports.handler = async (event) => {
       };
     }
     
+    const results = [];
+    
     // Save each article to Xata
     for (const article of articles) {
-      await xata.db.articles.createOrReplace({
-        id: article.id,
-        title: article.title,
-        feature_image: article.featuredImage,
-        content: JSON.stringify(article),
-        link: `/article/${article.id}`,
-        youtube_link: ""
-      });
+      try {
+        await xata.db.articles.createOrReplace({
+          id: article.id,
+          title: article.title,
+          feature_image: article.featuredImage || '',
+          content: JSON.stringify(article),
+          link: `/article/${article.id}`,
+          youtube_link: article.youtubeLink || ""
+        });
+        
+        results.push({ id: article.id, success: true });
+      } catch (error) {
+        console.error(`Failed to save article ${article.id}:`, error);
+        results.push({ id: article.id, success: false, error: error.message });
+      }
     }
     
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, message: 'Articles saved successfully' })
+      body: JSON.stringify({ 
+        success: true, 
+        message: 'Articles processed', 
+        results 
+      })
     };
   } catch (error) {
     console.error('Failed to save articles:', error);

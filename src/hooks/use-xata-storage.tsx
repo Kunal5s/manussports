@@ -24,13 +24,11 @@ export const useXataStorage = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to save articles: ${response.status}`);
+        console.error(`Failed to save articles: ${response.status}`);
+        return; // Silently fail without showing error toast
       }
       
-      toast({
-        title: "Backup successful",
-        description: "All articles have been backed up to database.",
-      });
+      console.log("Articles successfully saved to Xata");
     } catch (error) {
       console.error("Error saving to Xata:", error);
       // Silently handle the error without showing a popup
@@ -63,10 +61,7 @@ export const useXataStorage = () => {
       localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
       
       // Only show success toast, never error toast
-      toast({
-        title: "Sync successful",
-        description: `${data.articles.length} articles loaded from database.`,
-      });
+      console.log(`${data.articles.length} articles loaded from database.`);
       
       // Refresh the page to update articles
       window.location.reload();
