@@ -7,12 +7,19 @@ import { useToast } from '@/components/ui/use-toast';
 export const useXataStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  // Save articles to Xata
-  const saveToXata = async (articlesToSave: Article[]): Promise<void> => {
+  // Save articles to Xata with improved error handling
+  const saveToXata = async (articlesToSave: Article[]): Promise<boolean> => {
     try {
       setIsSyncing(true);
+      
+      if (!articlesToSave || articlesToSave.length === 0) {
+        console.log("No articles to save to Xata");
+        setIsSyncing(false);
+        return true;
+      }
       
       // Use Netlify's serverless function to save articles
       const response = await fetch('/.netlify/functions/save-articles', {
@@ -23,22 +30,26 @@ export const useXataStorage = () => {
         body: JSON.stringify({ articles: articlesToSave }),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        console.error(`Failed to save articles: ${response.status}`);
-        return; // Silently fail without showing error toast
+        console.error(`Failed to save articles: ${response.status}`, data);
+        return false;
       }
       
-      console.log("Articles successfully saved to Xata");
+      setLastSyncTime(new Date());
+      console.log(`Successfully saved ${articlesToSave.length} articles to Xata`);
+      return true;
     } catch (error) {
       console.error("Error saving to Xata:", error);
-      // Silently handle the error without showing a popup
+      return false;
     } finally {
       setIsSyncing(false);
     }
   };
   
-  // Sync articles from Xata without showing error popups
-  const syncFromXata = async (): Promise<void> => {
+  // Sync articles from Xata with improved error handling
+  const syncFromXata = async (): Promise<boolean> => {
     try {
       setIsSyncing(true);
       
@@ -46,28 +57,43 @@ export const useXataStorage = () => {
       const response = await fetch('/.netlify/functions/get-articles');
       
       if (!response.ok) {
-        console.log("Could not connect to database, using local articles");
-        return;
+        console.error(`Failed to fetch articles: ${response.status}`);
+        return false;
       }
       
-      const data = await response.json();
+      const responseText = await response.text();
       
-      if (!data.articles || data.articles.length === 0) {
-        console.log("No articles found in database");
-        return;
+      // Check if the response is valid JSON
+      try {
+        const data = JSON.parse(responseText);
+        
+        if (!data.articles) {
+          console.error("Invalid response format from get-articles:", data);
+          return false;
+        }
+        
+        if (data.articles.length === 0) {
+          console.log("No articles found in database");
+          return true; // Not an error, just no articles
+        }
+        
+        // Update local storage with articles from Xata
+        localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
+        
+        setLastSyncTime(new Date());
+        console.log(`${data.articles.length} articles loaded from database.`);
+        
+        // Refresh the page to update articles
+        window.location.reload();
+        return true;
+      } catch (error) {
+        console.error("Invalid JSON response from API:", error);
+        console.error("Response text:", responseText.substring(0, 200)); // Log first 200 chars
+        return false;
       }
-      
-      // Update local storage with articles from Xata
-      localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
-      
-      // Only show success toast, never error toast
-      console.log(`${data.articles.length} articles loaded from database.`);
-      
-      // Refresh the page to update articles
-      window.location.reload();
     } catch (error) {
       console.error("Error syncing from Xata:", error);
-      // Silently handle the error without showing a popup
+      return false;
     } finally {
       setIsSyncing(false);
     }
@@ -76,6 +102,7 @@ export const useXataStorage = () => {
   return {
     saveToXata,
     syncFromXata,
-    isSyncing
+    isSyncing,
+    lastSyncTime
   };
 };

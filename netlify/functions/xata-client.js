@@ -2,16 +2,22 @@
 // Xata client for Netlify functions
 const { buildClient } = require('@xata.io/client');
 
-// Xata client configuration
+// Xata client configuration with better error handling
 exports.getXataClient = () => {
-  // Initialize the Xata client using environment variables provided by Netlify
-  // XATA_API_KEY and XATA_BRANCH are set in Netlify environment variables
   try {
+    // Initialize the Xata client using environment variables set in Netlify
+    // No need to manually set XATA_API_KEY as it's configured in Netlify environment
     const xata = buildClient();
-    console.log("Xata client initialized in Netlify function");
+    console.log("Xata client initialized successfully in Netlify function");
+    
+    // Check if we can access the database
+    if (!xata.db) {
+      throw new Error("Xata database connection not established");
+    }
+    
     return xata;
   } catch (error) {
     console.error("Error initializing Xata client:", error);
-    throw new Error("Failed to initialize Xata client");
+    throw new Error(`Failed to initialize Xata client: ${error.message}`);
   }
 };
