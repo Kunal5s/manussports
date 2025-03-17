@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,11 +36,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Component to handle initial data loading
+// Component to handle initial data loading without showing errors
 const DataInitializer = ({ children }: { children: React.ReactNode }) => {
   const { syncFromXata } = useXataStorage();
   const [initialized, setInitialized] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
   
   useEffect(() => {
     const loadArticles = async () => {
@@ -47,13 +47,22 @@ const DataInitializer = ({ children }: { children: React.ReactNode }) => {
         // Check if articles already exist in localStorage
         const articlesInStorage = localStorage.getItem('manusSportsArticles');
         
-        // Always try to sync from database first
-        await syncFromXata();
-        setInitialized(true);
+        if (articlesInStorage) {
+          console.log("Using articles from local storage");
+          setInitialized(true);
+          
+          // Attempt to sync in background without blocking UI
+          syncFromXata().catch(err => {
+            console.log("Background sync failed, continuing with local data");
+          });
+        } else {
+          // If no articles in storage, try to get them from database
+          await syncFromXata();
+          setInitialized(true);
+        }
       } catch (err) {
-        console.error("Failed to sync articles:", err);
-        setSyncError("Could not connect to database. Using local storage only.");
-        setInitialized(true);
+        console.error("Error during initialization:", err);
+        setInitialized(true); // Continue even if there's an error
       }
     };
     
@@ -67,22 +76,13 @@ const DataInitializer = ({ children }: { children: React.ReactNode }) => {
         <div className="text-center">
           <h2 className="text-xl font-medium mb-4">Loading Manus Sports...</h2>
           <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading articles from database...</p>
+          <p className="mt-4 text-gray-500">Loading articles...</p>
         </div>
       </div>
     );
   }
   
-  return (
-    <>
-      {syncError && (
-        <div className="bg-amber-50 text-amber-800 p-2 text-sm text-center">
-          {syncError} <button className="font-medium underline" onClick={() => window.location.reload()}>Retry</button>
-        </div>
-      )}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 };
 
 const App = () => (

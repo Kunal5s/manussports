@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 
-// Using Netlify environment variables for Xata connection
+// Hook for handling Xata database operations via Netlify functions
 export const useXataStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -33,17 +33,13 @@ export const useXataStorage = () => {
       });
     } catch (error) {
       console.error("Error saving to Xata:", error);
-      toast({
-        title: "Backup failed",
-        description: "Articles saved to local storage only. You can try again later.",
-        variant: "destructive",
-      });
+      // Silently handle the error without showing a popup
     } finally {
       setIsSyncing(false);
     }
   };
   
-  // Sync articles from Xata
+  // Sync articles from Xata without showing error popups
   const syncFromXata = async (): Promise<void> => {
     try {
       setIsSyncing(true);
@@ -52,38 +48,31 @@ export const useXataStorage = () => {
       const response = await fetch('/.netlify/functions/get-articles');
       
       if (!response.ok) {
-        throw new Error(`Failed to sync from Xata: ${response.status}`);
+        console.log("Could not connect to database, using local articles");
+        return;
       }
       
       const data = await response.json();
       
       if (!data.articles || data.articles.length === 0) {
-        console.log("No articles found in Xata");
-        toast({
-          title: "No articles found",
-          description: "No articles found in the database. Start by creating some!",
-        });
+        console.log("No articles found in database");
         return;
       }
       
       // Update local storage with articles from Xata
-      localStorage.removeItem('manusSportsArticles');
       localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
       
+      // Only show success toast, never error toast
       toast({
         title: "Sync successful",
         description: `${data.articles.length} articles loaded from database.`,
       });
       
-      // Force a page reload to refresh the DataContext with new articles
+      // Refresh the page to update articles
       window.location.reload();
     } catch (error) {
       console.error("Error syncing from Xata:", error);
-      toast({
-        title: "Sync failed",
-        description: "Using local articles only. Check your connection and try again.",
-        variant: "destructive",
-      });
+      // Silently handle the error without showing a popup
     } finally {
       setIsSyncing(false);
     }
