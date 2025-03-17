@@ -3,10 +3,7 @@ import { useState } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 
-// Xata API details - using the correct format for the base URL
-const XATA_API_KEY = "xau_QNGaxjicleu6dFRunfVpoSZWD46BC3Ru6";
-const XATA_BASE_URL = "https://Kunal-Sonpitre-s-workspace-uftkup.eu-central-1.xata.sh/db/my_blog_db:main";
-
+// Using Netlify environment variables for Xata connection
 export const useXataStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -17,34 +14,17 @@ export const useXataStorage = () => {
     try {
       setIsSyncing(true);
       
-      // Prepare articles for Xata format
-      for (const article of articlesToSave) {
-        const xataArticle = {
-          title: article.title,
-          feature_image: article.featuredImage,
-          content: JSON.stringify(article), // Store whole article object as content
-          link: `/article/${article.id}`, // Create link to article
-          youtube_link: "" // Empty for now
-        };
-        
-        try {
-          // We'll use a direct POST to create/update each article
-          // Using article.id as the record identifier
-          await fetch(`${XATA_BASE_URL}/tables/articles/data/${article.id}`, {
-            method: 'PUT', // PUT will create or update
-            headers: {
-              'Authorization': `Bearer ${XATA_API_KEY}`,
-              'Content-Type': 'application/json',
-              'X-Xata-Agent': 'Manus Sports/1.0'
-            },
-            body: JSON.stringify(xataArticle)
-          });
-          
-          console.log(`Successfully saved article: ${article.title}`);
-        } catch (articleError) {
-          console.error(`Error saving article ${article.id}:`, articleError);
-          // Continue with other articles even if one fails
-        }
+      // Use Netlify's serverless function to save articles
+      const response = await fetch('/.netlify/functions/save-articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ articles: articlesToSave }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save articles: ${response.status}`);
       }
       
       toast({
@@ -68,68 +48,8 @@ export const useXataStorage = () => {
     try {
       setIsSyncing(true);
       
-      // First check if the table exists by making a simple query
-      const tableCheckResponse = await fetch(`${XATA_BASE_URL}/tables/articles`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${XATA_API_KEY}`,
-          'Content-Type': 'application/json',
-          'X-Xata-Agent': 'Manus Sports/1.0'
-        }
-      });
-      
-      if (!tableCheckResponse.ok) {
-        if (tableCheckResponse.status === 404) {
-          // Create the articles table if it doesn't exist
-          console.log("Articles table doesn't exist yet. Creating it now.");
-          
-          // Create table structure - simplified for example
-          const createTableResponse = await fetch(`${XATA_BASE_URL}/tables`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${XATA_API_KEY}`,
-              'Content-Type': 'application/json',
-              'X-Xata-Agent': 'Manus Sports/1.0'
-            },
-            body: JSON.stringify({
-              name: "articles",
-              columns: [
-                { name: "title", type: "string" },
-                { name: "feature_image", type: "string" },
-                { name: "content", type: "text" },
-                { name: "link", type: "string" },
-                { name: "youtube_link", type: "string" }
-              ]
-            })
-          });
-          
-          if (!createTableResponse.ok) {
-            console.error("Failed to create articles table:", await createTableResponse.text());
-            throw new Error("Could not create articles table");
-          }
-          
-          toast({
-            title: "No articles found",
-            description: "Articles table created. Start by creating some articles!",
-          });
-          return;
-        } else {
-          throw new Error(`Database connection error: ${tableCheckResponse.status}`);
-        }
-      }
-      
-      // Table exists, query for articles
-      const response = await fetch(`${XATA_BASE_URL}/tables/articles/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${XATA_API_KEY}`,
-          'Content-Type': 'application/json',
-          'X-Xata-Agent': 'Manus Sports/1.0'
-        },
-        body: JSON.stringify({
-          columns: ["id", "title", "feature_image", "content"]
-        })
-      });
+      // Use Netlify's serverless function to fetch articles
+      const response = await fetch('/.netlify/functions/get-articles');
       
       if (!response.ok) {
         throw new Error(`Failed to sync from Xata: ${response.status}`);
@@ -137,7 +57,7 @@ export const useXataStorage = () => {
       
       const data = await response.json();
       
-      if (!data.records || data.records.length === 0) {
+      if (!data.articles || data.articles.length === 0) {
         console.log("No articles found in Xata");
         toast({
           title: "No articles found",
@@ -146,35 +66,17 @@ export const useXataStorage = () => {
         return;
       }
       
-      // Process each article from Xata
-      const loadedArticles: Article[] = [];
+      // Update local storage with articles from Xata
+      localStorage.removeItem('manusSportsArticles');
+      localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
       
-      for (const record of data.records) {
-        try {
-          // Parse the full article from content field
-          const fullArticle = JSON.parse(record.content);
-          
-          if (fullArticle.id && fullArticle.title && fullArticle.content) {
-            loadedArticles.push(fullArticle);
-          }
-        } catch (parseError) {
-          console.error("Error parsing article from Xata:", parseError);
-        }
-      }
+      toast({
+        title: "Sync successful",
+        description: `${data.articles.length} articles loaded from database.`,
+      });
       
-      if (loadedArticles.length > 0) {
-        // Remove all current articles and replace with ones from Xata
-        localStorage.removeItem('manusSportsArticles');
-        localStorage.setItem('manusSportsArticles', JSON.stringify(loadedArticles));
-        
-        toast({
-          title: "Sync successful",
-          description: `${loadedArticles.length} articles loaded from database.`,
-        });
-        
-        // Force a page reload to refresh the DataContext with new articles
-        window.location.reload();
-      }
+      // Force a page reload to refresh the DataContext with new articles
+      window.location.reload();
     } catch (error) {
       console.error("Error syncing from Xata:", error);
       toast({

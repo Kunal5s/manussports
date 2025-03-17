@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminSidebar from '@/components/AdminSidebar';
@@ -43,28 +42,6 @@ const AdminWallet: React.FC = () => {
   const paypal = usePaypal();
 
   useEffect(() => {
-    if (location.search.includes('code=')) {
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      
-      if (code) {
-        try {
-          paypal.handlePayPalCallback(code);
-          navigate('/admin/wallet', { replace: true });
-        } catch (error) {
-          console.error("Error handling PayPal callback:", error);
-          setIsPaypalError(true);
-          toast({
-            title: "PayPal Connection Error",
-            description: "Failed to connect your PayPal account. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }
-    }
-  }, [location, navigate, paypal, toast]);
-
-  useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
@@ -94,7 +71,7 @@ const AdminWallet: React.FC = () => {
     if (!newPaypalEmail) {
       toast({
         title: "Error",
-        description: "Please enter a valid PayPal email address",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -104,7 +81,7 @@ const AdminWallet: React.FC = () => {
       updatePaypalEmail(newPaypalEmail);
       toast({
         title: "Success",
-        description: "PayPal email updated successfully",
+        description: "Payment email updated successfully",
       });
     }
   };
@@ -113,7 +90,7 @@ const AdminWallet: React.FC = () => {
     if (!paypalEmail) {
       toast({
         title: "Error",
-        description: "Please set your PayPal email first",
+        description: "Please set your payment email first",
         variant: "destructive",
       });
       return;
@@ -135,15 +112,6 @@ const AdminWallet: React.FC = () => {
       await paypal.processWithdrawal(data.amount, paypalEmail);
       
       requestWithdrawal(data.amount);
-      
-      if (data.bankAccount) {
-        setTimeout(() => {
-          toast({
-            title: "Bank Transfer Initiated",
-            description: `$${data.amount.toFixed(2)} is being transferred to your bank account ending in ${data.bankAccount.slice(-4)}`,
-          });
-        }, 1000);
-      }
       
       form.reset();
     } catch (error) {
@@ -298,14 +266,14 @@ const AdminWallet: React.FC = () => {
                 <div className="space-y-6 max-w-md">
                   {!paypal.isConnected() ? (
                     <div className="space-y-4">
-                      <h3 className="font-medium">Connect Your PayPal Account</h3>
+                      <h3 className="font-medium">Connect Your Payment Account</h3>
                       <p className="text-sm text-gray-600">
-                        Enter your PayPal email address to enable instant withdrawals to your account.
+                        Enter your email address to enable instant withdrawals to your account.
                       </p>
                       <div className="flex flex-col space-y-2">
                         <Input
                           type="email"
-                          placeholder="Enter your PayPal email address"
+                          placeholder="Enter your email address"
                           value={newPaypalEmail}
                           onChange={(e) => setNewPaypalEmail(e.target.value)}
                           className="w-full"
@@ -314,7 +282,7 @@ const AdminWallet: React.FC = () => {
                           onClick={handlePaypalUpdate}
                           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                         >
-                          Connect PayPal Account
+                          Connect Payment Account
                         </Button>
                       </div>
                       
@@ -323,7 +291,7 @@ const AdminWallet: React.FC = () => {
                           <AlertTriangle className="h-4 w-4" />
                           <AlertTitle>Connection Error</AlertTitle>
                           <AlertDescription>
-                            There was an error connecting to PayPal. Please try again later.
+                            There was an error connecting to the payment system. Please try again later.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -332,15 +300,15 @@ const AdminWallet: React.FC = () => {
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Check className="h-5 w-5 text-green-500" />
-                        <span className="font-medium">PayPal Account Connected</span>
+                        <span className="font-medium">Payment Account Connected</span>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Your PayPal account ({paypalEmail}) is connected for instant withdrawals.
+                        Your payment account ({paypalEmail}) is connected for instant withdrawals.
                       </p>
                       <div className="flex flex-col space-y-2">
                         <Input
                           type="email"
-                          placeholder="Update PayPal email address"
+                          placeholder="Update email address"
                           value={newPaypalEmail}
                           onChange={(e) => setNewPaypalEmail(e.target.value)}
                           className="w-full"
@@ -350,51 +318,26 @@ const AdminWallet: React.FC = () => {
                           variant="outline"
                           className="px-4 py-2"
                         >
-                          Update PayPal Email
+                          Update Email
                         </Button>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-2 mt-6 pt-6 border-t">
-                    <label className="text-sm font-medium">Bank Account (for direct transfers)</label>
-                    <Input 
-                      type="text" 
-                      className="w-full px-3 py-2 border rounded-md" 
-                      placeholder="Account number or last 4 digits"
-                      value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                    />
-                    <p className="text-xs text-gray-500">For direct bank transfers from your PayPal account</p>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      toast({
-                        title: "Bank Account Linked",
-                        description: "Your bank account has been linked to your PayPal account for automatic transfers",
-                      });
-                    }}
-                    variant="outline"
-                    className="px-4 py-2"
-                    disabled={!bankAccount}
-                  >
-                    Link Bank Account
-                  </Button>
-
                   <div className="mt-6 p-4 bg-green-50 text-green-700 rounded-md">
-                    <h3 className="font-medium mb-2">PayPal Integration Info</h3>
+                    <h3 className="font-medium mb-2">Polar Payment Integration</h3>
                     <p className="text-sm">
-                      Your earnings are automatically sent to your PayPal account within 5 minutes of withdrawal request. 
-                      Make sure your PayPal account is connected to avoid delays.
+                      Your earnings can be withdrawn through our secure Polar payment integration.
+                      Make sure your email account is connected to avoid delays.
                     </p>
                     <div className="mt-2 flex">
                       <a 
-                        href="https://www.paypal.com" 
+                        href="https://polar.sh" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-sm text-blue-600 flex items-center hover:underline"
                       >
-                        Check PayPal Account 
+                        Learn more about Polar 
                         <ExternalLink size={14} className="ml-1" />
                       </a>
                     </div>
@@ -409,17 +352,17 @@ const AdminWallet: React.FC = () => {
               <CardHeader>
                 <CardTitle>Request Withdrawal</CardTitle>
                 <CardDescription>
-                  Withdraw your earnings to PayPal instantly
-                  {!paypal.isConnected() && ' (Please connect your PayPal account first)'}
+                  Withdraw your earnings instantly
+                  {!paypal.isConnected() && ' (Please connect your payment account first)'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isPaypalError && (
                   <Alert variant="destructive" className="mb-6">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>PayPal Connection Error</AlertTitle>
+                    <AlertTitle>Payment Connection Error</AlertTitle>
                     <AlertDescription>
-                      There was an error connecting to PayPal. Please try again later or contact support.
+                      There was an error connecting to the payment system. Please try again later or contact support.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -427,9 +370,9 @@ const AdminWallet: React.FC = () => {
                 {!paypal.isConnected() && (
                   <Alert className="mb-6">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>PayPal Not Connected</AlertTitle>
+                    <AlertTitle>Payment Account Not Connected</AlertTitle>
                     <AlertDescription>
-                      To withdraw funds, you must first connect your PayPal account in the Payment Settings tab.
+                      To withdraw funds, you must first connect your payment account in the Payment Settings tab.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -457,26 +400,6 @@ const AdminWallet: React.FC = () => {
                       )}
                     />
                     
-                    <FormField
-                      control={form.control}
-                      name="bankAccount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank Account (Optional)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="For direct bank transfer"
-                              type="text"
-                              {...field}
-                              disabled={!paypal.isConnected() || isProcessing}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                          <p className="text-xs text-gray-500">If provided, funds will be automatically transferred to your bank account</p>
-                        </FormItem>
-                      )}
-                    />
-                    
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-500">
                         Available: ${walletBalance.toFixed(2)}
@@ -486,35 +409,45 @@ const AdminWallet: React.FC = () => {
                         disabled={!paypal.isConnected() || walletBalance < 10 || isProcessing}
                         className={isProcessing ? "bg-gray-400" : ""}
                       >
-                        {isProcessing ? "Processing PayPal Transfer..." : "Withdraw to PayPal"}
+                        {isProcessing ? "Processing Withdrawal..." : "Withdraw Funds"}
                       </Button>
                     </div>
 
                     {walletBalance >= 10 && paypal.isConnected() && (
                       <div className="p-3 bg-blue-50 text-blue-700 rounded-md mt-4 text-sm">
-                        <p>Funds will be sent to your PayPal account immediately using direct API integration.</p>
-                        {bankAccount && <p className="mt-1">Direct bank transfer will be initiated immediately after PayPal receives the funds.</p>}
+                        <p>A secure Polar checkout page will open to process your withdrawal.</p>
                       </div>
                     )}
                   </form>
                 </Form>
                 
                 <div className="mt-8 pt-6 border-t border-gray-200">
-                  <h3 className="font-medium mb-3">Direct PayPal Integration</h3>
+                  <h3 className="font-medium mb-3">Polar Payment Integration</h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    Your withdrawals are processed through the PayPal API for instant transfers. Funds arrive in your PayPal account within minutes.
+                    Your withdrawals are processed through the Polar payment system for secure transfers.
                   </p>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Check className="text-green-500" size={16} />
-                    <span>Secure API connection with OAuth 2.0 authentication</span>
+                    <span>Secure payment processing</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600 mt-1">
                     <Check className="text-green-500" size={16} />
-                    <span>Instant transfers to your verified PayPal account</span>
+                    <span>Multiple payment methods supported</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600 mt-1">
                     <Check className="text-green-500" size={16} />
-                    <span>Automated bank account transfers when linked</span>
+                    <span>Instant processing for verified accounts</span>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <a 
+                      href="https://buy.polar.sh/polar_cl_OzhOsPD8Lz5chrXlfFggMuFc1wiV36A1vmg3200VriH" 
+                      data-polar-checkout 
+                      data-polar-checkout-theme="dark"
+                      className="inline-block px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                    >
+                      Polar Checkout
+                    </a>
                   </div>
                 </div>
               </CardContent>

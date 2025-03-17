@@ -8,16 +8,16 @@ export function usePaypal() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
 
-  // Check localStorage for PayPal connection on component mount
+  const POLAR_API_KEY = "polar_oat_RB4EfpKFQcRb0Dwd1KJW8DeGLv38fGJR6Q2b90i5gFu";
+
   useEffect(() => {
-    const storedEmail = localStorage.getItem("paypal_email");
+    const storedEmail = localStorage.getItem("polar_email");
     if (storedEmail) {
       setIsConnected(true);
       setConnectedEmail(storedEmail);
     }
   }, []);
 
-  // Connect to PayPal directly with email
   const connectPayPalWithEmail = (email: string) => {
     if (!email || !email.includes('@')) {
       toast({
@@ -28,55 +28,51 @@ export function usePaypal() {
       return false;
     }
     
-    // Store the email in localStorage
-    localStorage.setItem("paypal_email", email);
+    localStorage.setItem("polar_email", email);
     setIsConnected(true);
     setConnectedEmail(email);
     
     toast({
-      title: "PayPal Connected",
-      description: `Your PayPal account (${email}) has been successfully connected`,
+      title: "Payment Account Connected",
+      description: `Your payment account (${email}) has been successfully connected`,
     });
     
     return true;
   };
 
-  // Legacy OAuth connect method - keeping for backwards compatibility
   const connectPayPal = () => {
     toast({
-      title: "PayPal Connection",
-      description: "Please use email connection method instead of OAuth",
+      title: "Payment Connection",
+      description: "Please use email connection method instead",
     });
     return false;
   };
 
-  // Process withdrawal
   const processWithdrawal = async (amount: number, email: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Simulate successful API call for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+      const checkoutUrl = `https://buy.polar.sh/polar_cl_OzhOsPD8Lz5chrXlfFggMuFc1wiV36A1vmg3200VriH?amount=${amount * 100}&email=${encodeURIComponent(email)}`;
       
-      // Store the withdrawal in localStorage
+      window.open(checkoutUrl, '_blank');
+      
       const withdrawalId = Date.now().toString();
       const newWithdrawal = {
         id: withdrawalId,
         amount: amount,
         email: email,
         date: new Date().toISOString(),
-        status: "completed"
+        status: "pending"
       };
       
-      // Store withdrawal in local storage for persistence
       const existingWithdrawals = JSON.parse(localStorage.getItem("withdrawals") || "[]");
       existingWithdrawals.push(newWithdrawal);
       localStorage.setItem("withdrawals", JSON.stringify(existingWithdrawals));
       
       toast({
-        title: "Withdrawal Successful",
-        description: `$${amount.toFixed(2)} has been sent to your PayPal account (${email})`,
+        title: "Withdrawal Process Started",
+        description: `Checkout for $${amount.toFixed(2)} has been opened. Complete the process to receive your funds.`,
       });
       
       setIsLoading(false);
@@ -99,21 +95,22 @@ export function usePaypal() {
     }
   };
 
-  // Handle PayPal callback (to be called after redirect from PayPal)
-  const handlePayPalCallback = (code: string) => {
-    // For demonstration, we'll just save a mock email
-    const mockEmail = "user@example.com";
-    localStorage.setItem("paypal_email", mockEmail);
-    setIsConnected(true);
-    setConnectedEmail(mockEmail);
-    
-    toast({
-      title: "PayPal Connected",
-      description: "Your PayPal account has been successfully connected",
-    });
-    
+  const handlePayPalCallback = () => {
     return true;
   };
+
+  useEffect(() => {
+    const polarScript = document.createElement('script');
+    polarScript.src = "https://cdn.jsdelivr.net/npm/@polar-sh/checkout@0.1/dist/embed.global.js";
+    polarScript.defer = true;
+    polarScript.setAttribute('data-auto-init', '');
+    
+    document.body.appendChild(polarScript);
+    
+    return () => {
+      document.body.removeChild(polarScript);
+    };
+  }, []);
 
   return {
     isConnected: () => isConnected,

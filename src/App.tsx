@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,8 +35,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Component to handle initial Xata sync
-const XataInitializer = ({ children }: { children: React.ReactNode }) => {
+// Component to handle initial data loading
+const DataInitializer = ({ children }: { children: React.ReactNode }) => {
   const { syncFromXata } = useXataStorage();
   const [initialized, setInitialized] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -48,15 +47,12 @@ const XataInitializer = ({ children }: { children: React.ReactNode }) => {
         // Check if articles already exist in localStorage
         const articlesInStorage = localStorage.getItem('manusSportsArticles');
         
-        // If no articles in storage or empty array, try to sync from Xata
-        if (!articlesInStorage || JSON.parse(articlesInStorage).length === 0) {
-          console.log("No articles found in localStorage, syncing from database");
-          await syncFromXata();
-        }
+        // Always try to sync from database first
+        await syncFromXata();
+        setInitialized(true);
       } catch (err) {
         console.error("Failed to sync articles:", err);
         setSyncError("Could not connect to database. Using local storage only.");
-      } finally {
         setInitialized(true);
       }
     };
@@ -97,7 +93,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <XataInitializer>
+            <DataInitializer>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/articles" element={<ArticlesPage />} />
@@ -119,7 +115,7 @@ const App = () => (
                 <Route path="/admin/authors" element={<AdminAuthors />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </XataInitializer>
+            </DataInitializer>
           </TooltipProvider>
         </AuthProvider>
       </DataProvider>
