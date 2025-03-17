@@ -44,13 +44,12 @@ export const WithdrawalsTable: React.FC = () => {
                   <span className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
                     withdrawal.status === 'completed' 
                       ? 'bg-green-100 text-green-800' 
-                      : withdrawal.status === 'pending'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {withdrawal.status === 'completed' && <Check className="mr-1 h-3 w-3" />}
-                    {withdrawal.status === 'pending' && <RefreshCw className="mr-1 h-3 w-3 animate-spin" />}
-                    {withdrawal.status === 'failed' && <AlertTriangle className="mr-1 h-3 w-3" />}
+                    {withdrawal.status === 'completed' 
+                      ? <Check className="mr-1 h-3 w-3" />
+                      : <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                    }
                     {withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)}
                   </span>
                 </td>
