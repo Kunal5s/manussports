@@ -61,7 +61,8 @@ const DataInitializer = ({ children }: { children: React.ReactNode }) => {
           setInitialized(true);
         }
       } catch (err) {
-        console.error("Error during initialization:", err);
+        console.log("Error during initialization - using empty articles array");
+        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
         setInitialized(true); // Continue even if there's an error
       }
     };

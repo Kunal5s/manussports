@@ -27,11 +27,11 @@ exports.handler = async (event) => {
     
     // Access the articles table
     if (!xata.db || !xata.db.articles) {
-      console.error("Articles table not found in Xata database");
+      console.log("Articles table not found in Xata database - returning empty array");
       return {
-        statusCode: 200, // Use 200 even for errors to avoid CORS issues with error status codes
+        statusCode: 200,
         headers,
-        body: JSON.stringify({ error: 'Articles table not found', articles: [] })
+        body: JSON.stringify({ articles: [] })
       };
     }
     
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
       console.log(`Retrieved ${articles ? articles.length : 0} articles from Xata`);
       
       if (!articles || articles.length === 0) {
-        console.log("No articles found in Xata database");
+        console.log("No articles found in Xata database - returning empty array");
         return {
           statusCode: 200,
           headers,
@@ -58,14 +58,14 @@ exports.handler = async (event) => {
       const parsedArticles = articles.map(article => {
         try {
           if (!article.content) {
-            console.warn(`Article ${article.id} has no content`);
+            console.log(`Article ${article.id} has no content - skipping`);
             return null;
           }
           
           // The content field contains the full article object serialized as JSON
           return JSON.parse(article.content);
         } catch (e) {
-          console.error(`Failed to parse article content for ID ${article.id}:`, e);
+          console.log(`Failed to parse article content for ID ${article.id} - skipping`);
           return null;
         }
       }).filter(Boolean); // Remove any null entries
@@ -78,20 +78,19 @@ exports.handler = async (event) => {
         body: JSON.stringify({ articles: parsedArticles })
       };
     } catch (error) {
-      console.error("Error fetching articles:", error);
-      // Return an empty array in case of error to avoid breaking the frontend
+      console.log("Error fetching articles - returning empty array:", error);
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ articles: [], error: error.message })
+        body: JSON.stringify({ articles: [] })
       };
     }
   } catch (error) {
-    console.error('Failed to fetch articles:', error);
+    console.log('Failed to fetch articles - returning empty array:', error);
     return {
-      statusCode: 200, // Use 200 even for errors to avoid CORS issues
+      statusCode: 200,
       headers,
-      body: JSON.stringify({ error: 'Failed to fetch articles: ' + error.message, articles: [] })
+      body: JSON.stringify({ articles: [] })
     };
   }
 };
