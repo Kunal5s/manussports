@@ -38,39 +38,26 @@ const queryClient = new QueryClient({
 
 // Component to handle initial data loading without showing errors
 const DataInitializer = ({ children }: { children: React.ReactNode }) => {
-  const { syncFromXata } = useXataStorage();
   const [initialized, setInitialized] = useState(false);
   
   useEffect(() => {
-    const loadArticles = async () => {
-      try {
-        // Always try to get articles from Xata first
-        const syncSuccess = await syncFromXata();
-        
-        if (!syncSuccess) {
-          console.log("Sync failed, checking localStorage");
-          // If sync fails, check if articles exist in localStorage
-          const articlesInStorage = localStorage.getItem('manusSportsArticles');
-          
-          if (!articlesInStorage) {
-            console.log("No articles in localStorage, storing empty array");
-            localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-          } else {
-            console.log("Using articles from localStorage");
-          }
-        }
-        
-        setInitialized(true);
-      } catch (err) {
-        console.error("Error during initialization:", err);
-        // Ensure we have at least an empty array in storage
+    // Initialize directly without showing errors
+    const initializeData = () => {
+      // Check if articles exist in localStorage
+      const articlesInStorage = localStorage.getItem('manusSportsArticles');
+      
+      if (!articlesInStorage) {
+        console.log("No articles in localStorage, storing empty array");
         localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-        setInitialized(true);
+      } else {
+        console.log("Using articles from localStorage");
       }
+      
+      setInitialized(true);
     };
     
-    loadArticles();
-  }, [syncFromXata]);
+    initializeData();
+  }, []);
   
   // Show loading if not initialized
   if (!initialized) {

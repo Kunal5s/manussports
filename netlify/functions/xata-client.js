@@ -15,7 +15,8 @@ exports.getXataClient = () => {
     const xata = buildClient({
       apiKey: apiKey,
       branch: process.env.XATA_BRANCH || 'main',
-      databaseURL: databaseURL
+      databaseURL: databaseURL,
+      enableHTTPCompression: true  // Add compression for better performance
     });
     
     console.log("Xata client initialized successfully in Netlify function");

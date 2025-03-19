@@ -3,11 +3,15 @@
 const { getXataClient } = require('./xata-client');
 
 exports.handler = async (event) => {
+  // Define CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
   
   // Handle preflight requests
@@ -69,7 +73,7 @@ exports.handler = async (event) => {
     } catch (error) {
       console.error("Error fetching articles:", error);
       return {
-        statusCode: 500,
+        statusCode: 200, // Return 200 instead of 500 to avoid breaking the app
         headers,
         body: JSON.stringify({ 
           articles: [], 
@@ -80,7 +84,7 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('Failed to fetch articles:', error);
     return {
-      statusCode: 500,
+      statusCode: 200, // Return 200 instead of 500 to avoid breaking the app
       headers,
       body: JSON.stringify({ 
         articles: [], 

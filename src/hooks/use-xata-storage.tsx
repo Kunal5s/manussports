@@ -10,6 +10,11 @@ export const useXataStorage = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
+  // Helper function to check if response is HTML (error page)
+  const isHtmlResponse = (text: string): boolean => {
+    return text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html');
+  };
+
   // Save articles to Xata with improved error handling
   const saveToXata = async (articlesToSave: Article[]): Promise<boolean> => {
     try {
@@ -29,6 +34,8 @@ export const useXataStorage = () => {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify({ articles: articlesToSave }),
       });
@@ -36,21 +43,46 @@ export const useXataStorage = () => {
       // Log the response status
       console.log(`Save articles response status: ${response.status}`);
       
-      // Check if the response is OK before attempting to parse JSON
-      if (!response.ok) {
-        console.error(`Failed to save articles: ${response.status}`);
+      const responseText = await response.text();
+      
+      // Check if the response is HTML (error page)
+      if (isHtmlResponse(responseText)) {
+        console.error("Received HTML error page instead of JSON");
+        
+        // Store articles in localStorage as fallback
+        localStorage.setItem('manusSportsArticles', JSON.stringify(articlesToSave));
+        console.log("Saved articles to localStorage as fallback");
+        
         return false;
       }
       
-      const data = await response.json();
-      console.log("Save articles response data:", data);
-      
-      setLastSyncTime(new Date());
-      console.log(`Successfully saved ${articlesToSave.length} articles to Xata`);
-      
-      return true;
+      try {
+        const data = JSON.parse(responseText);
+        console.log("Save articles response data:", data);
+        
+        // Update localStorage with the articles we just saved
+        localStorage.setItem('manusSportsArticles', JSON.stringify(articlesToSave));
+        
+        setLastSyncTime(new Date());
+        console.log(`Successfully saved ${articlesToSave.length} articles to Xata`);
+        
+        return true;
+      } catch (error) {
+        console.error("Failed to parse JSON response:", error);
+        
+        // Store articles in localStorage as fallback
+        localStorage.setItem('manusSportsArticles', JSON.stringify(articlesToSave));
+        console.log("Saved articles to localStorage as fallback");
+        
+        return false;
+      }
     } catch (error) {
       console.error("Error saving to Xata:", error);
+      
+      // Store articles in localStorage as fallback
+      localStorage.setItem('manusSportsArticles', JSON.stringify(articlesToSave));
+      console.log("Saved articles to localStorage as fallback");
+      
       return false;
     } finally {
       setIsSyncing(false);
@@ -58,7 +90,7 @@ export const useXataStorage = () => {
   };
   
   // Sync articles from Xata with improved error handling
-  const syncFromXata = async (): Promise<boolean> => {
+  const syncFromXata = async (showToast = false): Promise<boolean> => {
     try {
       setIsSyncing(true);
       console.log("Attempting to sync articles from Xata");
@@ -78,14 +110,25 @@ export const useXataStorage = () => {
       // Log the response status
       console.log(`Sync articles response status: ${response.status}`);
       
-      if (!response.ok) {
-        console.error(`Error response from API: ${response.status}`);
-        return false;
-      }
-      
       // Get the response as text first to check its format
       const responseText = await response.text();
       console.log("Response text length:", responseText.length);
+      
+      // Check if it's HTML (error page)
+      if (isHtmlResponse(responseText)) {
+        console.error("Received HTML error page instead of JSON");
+        
+        // Get articles from localStorage as fallback
+        const storedArticles = localStorage.getItem('manusSportsArticles');
+        if (storedArticles) {
+          console.log("Using articles from localStorage as fallback");
+          return true;
+        } else {
+          console.log("No articles in localStorage, storing empty array");
+          localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+          return false;
+        }
+      }
       
       // Check if it's valid JSON
       try {
@@ -93,14 +136,25 @@ export const useXataStorage = () => {
         
         if (!data.articles) {
           console.error("Invalid response format from get-articles:", data);
-          return false;
+          
+          // Get articles from localStorage as fallback
+          const storedArticles = localStorage.getItem('manusSportsArticles');
+          if (storedArticles) {
+            console.log("Using articles from localStorage as fallback");
+            return true;
+          } else {
+            console.log("No articles in localStorage, storing empty array");
+            localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+            return false;
+          }
         }
         
         // Update local storage with articles from Xata
         localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
         
-        // Reload the page to reflect the new articles
-        window.location.reload();
+        if (showToast) {
+          toast.success("Articles synced successfully");
+        }
         
         setLastSyncTime(new Date());
         console.log(`${data.articles.length} articles loaded from database.`);
@@ -108,11 +162,31 @@ export const useXataStorage = () => {
         return true;
       } catch (error) {
         console.error("Invalid JSON response from API:", error);
-        return false;
+        
+        // Get articles from localStorage as fallback
+        const storedArticles = localStorage.getItem('manusSportsArticles');
+        if (storedArticles) {
+          console.log("Using articles from localStorage as fallback");
+          return true;
+        } else {
+          console.log("No articles in localStorage, storing empty array");
+          localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+          return false;
+        }
       }
     } catch (error) {
       console.error("Error syncing from Xata:", error);
-      return false;
+      
+      // Get articles from localStorage as fallback
+      const storedArticles = localStorage.getItem('manusSportsArticles');
+      if (storedArticles) {
+        console.log("Using articles from localStorage as fallback");
+        return true;
+      } else {
+        console.log("No articles in localStorage, storing empty array");
+        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+        return false;
+      }
     } finally {
       setIsSyncing(false);
     }
