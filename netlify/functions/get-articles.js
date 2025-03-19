@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     if (!xata.db || !xata.db.articles) {
       console.error("Articles table not found in Xata database");
       return {
-        statusCode: 404,
+        statusCode: 200, // Use 200 even for errors to avoid CORS issues with error status codes
         headers,
         body: JSON.stringify({ error: 'Articles table not found', articles: [] })
       };
@@ -89,7 +89,7 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('Failed to fetch articles:', error);
     return {
-      statusCode: 500,
+      statusCode: 200, // Use 200 even for errors to avoid CORS issues
       headers,
       body: JSON.stringify({ error: 'Failed to fetch articles: ' + error.message, articles: [] })
     };

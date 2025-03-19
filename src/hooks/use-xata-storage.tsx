@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { XCircle } from "lucide-react";
 
 // Hook for handling Xata database operations via Netlify functions
 export const useXataStorage = () => {
@@ -101,54 +103,44 @@ export const useXataStorage = () => {
       
       // Add cache-busting parameter to prevent browser caching
       const timestamp = new Date().getTime();
-      const response = await fetch(`/.netlify/functions/get-articles?t=${timestamp}`);
+      
+      // Make the request to the Netlify function with cache control headers
+      const response = await fetch(`/.netlify/functions/get-articles?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       
       // Log the response status
       console.log(`Sync articles response status: ${response.status}`);
       
-      // Check if the response is OK first before trying to parse JSON
-      if (!response.ok) {
-        let errorText = '';
-        try {
-          errorText = await response.text();
-        } catch (e) {
-          errorText = 'Failed to read error response';
-        }
-        
-        console.error(`Failed to fetch articles: ${response.status}`, errorText);
+      // First get the response as text to see what we're getting
+      const responseText = await response.text();
+      console.log("Response text length:", responseText.length);
+      
+      // Check if it's HTML instead of JSON (common error with Netlify dev)
+      if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html>')) {
+        console.error("Received HTML instead of JSON. This might be caused by a routing issue.");
         
         toast({
           title: "Error loading articles",
-          description: `Server returned ${response.status}. Please try again later.`,
+          description: "Server returned HTML instead of JSON. Please check your Netlify configuration.",
           variant: "destructive",
         });
         
         return false;
       }
       
-      // First get the response as text
-      let responseText;
-      try {
-        responseText = await response.text();
-        console.log("Received text response of length:", responseText.length);
-      } catch (error) {
-        console.error("Error getting response text:", error);
-        toast({
-          title: "Error loading articles",
-          description: "Failed to read server response",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      // Verify that the response is valid JSON
+      // Try to parse the JSON
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log("Sync articles response data:", data);
+        console.log("Parsed data successfully:", data);
       } catch (error) {
         console.error("Invalid JSON response from API:", error);
-        console.error("Response text:", responseText.substring(0, 200)); // Log first 200 chars
+        console.error("Response text preview:", responseText.substring(0, 200));
         
         toast({
           title: "Error loading articles",
@@ -179,7 +171,10 @@ export const useXataStorage = () => {
           description: "The database has no articles stored",
         });
         
-        return true; // Not an error, just no articles
+        // Store empty array to indicate we've synced
+        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+        window.location.reload();
+        return true;
       }
       
       // Update local storage with articles from Xata
