@@ -5,11 +5,12 @@ const { buildClient } = require('@xata.io/client');
 // Xata client configuration with better error handling
 exports.getXataClient = () => {
   try {
-    // Initialize the Xata client using environment variables set in Netlify
-    // Set XATA_API_KEY and XATA_BRANCH explicitly to avoid issues
+    // Initialize the Xata client using environment variables or hardcoded values as fallback
+    // Using the provided API key if environment variable is not set
     const xata = buildClient({
-      apiKey: process.env.XATA_API_KEY,
-      branch: process.env.XATA_BRANCH || 'main'
+      apiKey: process.env.XATA_API_KEY || "xau_QNGaxjicleu6dFRunfVpoSZWD46BC3Ru6",
+      branch: process.env.XATA_BRANCH || 'main',
+      databaseURL: process.env.XATA_DATABASE_URL || "https://Kunal-Sonpitre-s-workspace-uftkup.eu-central-1.xata.sh/db/my_blog_db"
     });
     
     console.log("Xata client initialized successfully in Netlify function");

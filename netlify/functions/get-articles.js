@@ -6,7 +6,8 @@ exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Content-Type': 'application/json'
   };
   
   // Handle preflight requests
@@ -18,8 +19,11 @@ exports.handler = async (event) => {
     };
   }
   
+  console.log("Starting get-articles function");
+  
   try {
     const xata = getXataClient();
+    console.log("Xata client retrieved successfully");
     
     // Access the articles table
     if (!xata.db || !xata.db.articles) {
@@ -32,10 +36,14 @@ exports.handler = async (event) => {
     }
     
     try {
+      console.log("Attempting to fetch articles from Xata");
+      
       // Get all articles from Xata with pagination (max 200 articles)
       const articles = await xata.db.articles.getAll({
         pagination: { size: 200 }
       });
+      
+      console.log(`Retrieved ${articles ? articles.length : 0} articles from Xata`);
       
       if (!articles || articles.length === 0) {
         console.log("No articles found in Xata database");
@@ -61,6 +69,8 @@ exports.handler = async (event) => {
           return null;
         }
       }).filter(Boolean); // Remove any null entries
+      
+      console.log(`Successfully parsed ${parsedArticles.length} articles`);
       
       return {
         statusCode: 200,
