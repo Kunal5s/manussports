@@ -2,15 +2,13 @@
 import { useState } from 'react';
 import { useData, Article } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { XCircle } from "lucide-react";
+import { toast } from 'sonner';
 
 // Hook for handling Xata database operations via Netlify functions
 export const useXataStorage = () => {
   const { articles, addArticle, deleteArticle, updateArticle } = useData();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const { toast } = useToast();
 
   // Save articles to Xata with improved error handling
   const saveToXata = async (articlesToSave: Article[]): Promise<boolean> => {
@@ -30,6 +28,7 @@ export const useXataStorage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
         body: JSON.stringify({ articles: articlesToSave }),
       });
@@ -39,25 +38,19 @@ export const useXataStorage = () => {
       
       // Check if the response is OK before attempting to parse JSON
       if (!response.ok) {
-        console.log(`Failed to save articles: ${response.status}`);
+        console.error(`Failed to save articles: ${response.status}`);
         return false;
       }
       
-      let data;
-      try {
-        data = await response.json();
-        console.log("Save articles response data:", data);
-      } catch (error) {
-        console.log("Error parsing JSON response:", error);
-        return false;
-      }
+      const data = await response.json();
+      console.log("Save articles response data:", data);
       
       setLastSyncTime(new Date());
       console.log(`Successfully saved ${articlesToSave.length} articles to Xata`);
       
       return true;
     } catch (error) {
-      console.log("Error saving to Xata:", error);
+      console.error("Error saving to Xata:", error);
       return false;
     } finally {
       setIsSyncing(false);
@@ -85,81 +78,41 @@ export const useXataStorage = () => {
       // Log the response status
       console.log(`Sync articles response status: ${response.status}`);
       
-      // First get the response as text to see what we're getting
+      if (!response.ok) {
+        console.error(`Error response from API: ${response.status}`);
+        return false;
+      }
+      
+      // Get the response as text first to check its format
       const responseText = await response.text();
       console.log("Response text length:", responseText.length);
       
-      // Check if it's HTML instead of JSON (common error with Netlify dev)
-      if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html>')) {
-        console.log("Received HTML instead of JSON. Using local articles if available.");
-        
-        // Try to use local articles instead of showing an error
-        const localArticles = localStorage.getItem('manusSportsArticles');
-        if (localArticles) {
-          console.log("Using articles from local storage");
-          return true;
-        }
-        
-        // If no local articles, store empty array to prevent future errors
-        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-        return true;
-      }
-      
-      // Try to parse the JSON
-      let data;
+      // Check if it's valid JSON
       try {
-        data = JSON.parse(responseText);
-        console.log("Parsed data successfully:", data);
+        const data = JSON.parse(responseText);
+        
+        if (!data.articles) {
+          console.error("Invalid response format from get-articles:", data);
+          return false;
+        }
+        
+        // Update local storage with articles from Xata
+        localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
+        
+        // Reload the page to reflect the new articles
+        window.location.reload();
+        
+        setLastSyncTime(new Date());
+        console.log(`${data.articles.length} articles loaded from database.`);
+        
+        return true;
       } catch (error) {
-        console.log("Invalid JSON response from API:", error);
-        
-        // Try to use local articles instead of showing an error
-        const localArticles = localStorage.getItem('manusSportsArticles');
-        if (localArticles) {
-          console.log("Using articles from local storage");
-          return true;
-        }
-        
-        // If no local articles, store empty array to prevent future errors
-        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-        return true;
+        console.error("Invalid JSON response from API:", error);
+        return false;
       }
-      
-      if (!data.articles) {
-        console.log("Invalid response format from get-articles:", data);
-        
-        // Try to use local articles instead
-        const localArticles = localStorage.getItem('manusSportsArticles');
-        if (localArticles) {
-          console.log("Using articles from local storage");
-          return true;
-        }
-        
-        // If no local articles, store empty array
-        localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-        return true;
-      }
-      
-      // Update local storage with articles from Xata
-      localStorage.setItem('manusSportsArticles', JSON.stringify(data.articles));
-      
-      setLastSyncTime(new Date());
-      console.log(`${data.articles.length} articles loaded from database.`);
-      
-      return true;
     } catch (error) {
-      console.log("Error syncing from Xata:", error);
-      
-      // Try to use local articles instead
-      const localArticles = localStorage.getItem('manusSportsArticles');
-      if (localArticles) {
-        console.log("Using articles from local storage");
-        return true;
-      }
-      
-      // If no local articles, store empty array
-      localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-      return true;
+      console.error("Error syncing from Xata:", error);
+      return false;
     } finally {
       setIsSyncing(false);
     }

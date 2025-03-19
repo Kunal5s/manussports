@@ -22,14 +22,7 @@ exports.getXataClient = () => {
     
     return xata;
   } catch (error) {
-    console.log("Error initializing Xata client:", error);
-    // Return a minimal client structure to prevent errors
-    return {
-      db: {
-        articles: {
-          getAll: async () => []
-        }
-      }
-    };
+    console.error("Error initializing Xata client:", error);
+    throw new Error(`Failed to initialize Xata client: ${error.message}`);
   }
 };

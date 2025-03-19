@@ -6,10 +6,19 @@ import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
 import ArticleCard from '@/components/ArticleCard';
-import { DataProvider, useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/DataContext';
+import { useXataStorage } from '@/hooks/use-xata-storage';
 
-const HomePageContent: React.FC = () => {
+const HomePage: React.FC = () => {
   const { articles, authors } = useData();
+  const { syncFromXata } = useXataStorage();
+  
+  useEffect(() => {
+    // Try to sync articles from Xata when component mounts
+    syncFromXata().catch(err => {
+      console.error("Error syncing from Xata on homepage:", err);
+    });
+  }, [syncFromXata]);
   
   // Sort articles by date (newest first)
   const sortedArticles = [...articles].sort(
@@ -33,13 +42,19 @@ const HomePageContent: React.FC = () => {
         <section className="mb-16">
           <h2 className="text-3xl font-bold mb-6">Featured Articles</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {featuredArticles.map(article => (
-              <ArticleCard 
-                key={article.id} 
-                article={article} 
-                author={getAuthorById(article.authorId)} 
-              />
-            ))}
+            {featuredArticles.length > 0 ? (
+              featuredArticles.map(article => (
+                <ArticleCard 
+                  key={article.id} 
+                  article={article} 
+                  author={getAuthorById(article.authorId)} 
+                />
+              ))
+            ) : (
+              <div className="col-span-2 text-center py-8">
+                <p className="text-gray-500">No featured articles yet</p>
+              </div>
+            )}
           </div>
         </section>
         
@@ -54,13 +69,19 @@ const HomePageContent: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {recentArticles.map(article => (
-              <ArticleCard 
-                key={article.id} 
-                article={article} 
-                author={getAuthorById(article.authorId)} 
-              />
-            ))}
+            {recentArticles.length > 0 ? (
+              recentArticles.map(article => (
+                <ArticleCard 
+                  key={article.id} 
+                  article={article} 
+                  author={getAuthorById(article.authorId)} 
+                />
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-8">
+                <p className="text-gray-500">No recent articles yet</p>
+              </div>
+            )}
           </div>
         </section>
         
@@ -88,14 +109,6 @@ const HomePageContent: React.FC = () => {
       
       <Footer />
     </>
-  );
-};
-
-const HomePage: React.FC = () => {
-  return (
-    <DataProvider>
-      <HomePageContent />
-    </DataProvider>
   );
 };
 

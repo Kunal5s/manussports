@@ -32,7 +32,6 @@ exports.handler = async (event) => {
       console.log(`Received ${articles ? articles.length : 0} articles to save`);
     } catch (error) {
       console.error("Invalid JSON in request body:", error);
-      console.error("Request body:", event.body);
       return {
         statusCode: 400,
         headers,

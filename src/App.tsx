@@ -44,26 +44,28 @@ const DataInitializer = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadArticles = async () => {
       try {
-        // Check if articles already exist in localStorage
-        const articlesInStorage = localStorage.getItem('manusSportsArticles');
+        // Always try to get articles from Xata first
+        const syncSuccess = await syncFromXata();
         
-        if (articlesInStorage) {
-          console.log("Using articles from local storage");
-          setInitialized(true);
+        if (!syncSuccess) {
+          console.log("Sync failed, checking localStorage");
+          // If sync fails, check if articles exist in localStorage
+          const articlesInStorage = localStorage.getItem('manusSportsArticles');
           
-          // Attempt to sync in background without blocking UI
-          syncFromXata().catch(err => {
-            console.log("Background sync failed, continuing with local data");
-          });
-        } else {
-          // If no articles in storage, try to get them from database
-          await syncFromXata();
-          setInitialized(true);
+          if (!articlesInStorage) {
+            console.log("No articles in localStorage, storing empty array");
+            localStorage.setItem('manusSportsArticles', JSON.stringify([]));
+          } else {
+            console.log("Using articles from localStorage");
+          }
         }
+        
+        setInitialized(true);
       } catch (err) {
-        console.log("Error during initialization - using empty articles array");
+        console.error("Error during initialization:", err);
+        // Ensure we have at least an empty array in storage
         localStorage.setItem('manusSportsArticles', JSON.stringify([]));
-        setInitialized(true); // Continue even if there's an error
+        setInitialized(true);
       }
     };
     

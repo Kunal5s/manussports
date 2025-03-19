@@ -1,20 +1,28 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
 import ArticleCard from '@/components/ArticleCard';
 import { Input } from '@/components/ui/input';
-import { DataProvider, useData, CategoryType } from '@/contexts/DataContext';
-import { Button } from '@/components/ui/button';
+import { useData, CategoryType } from '@/contexts/DataContext';
 import { Filter, Search } from 'lucide-react';
+import { useXataStorage } from '@/hooks/use-xata-storage';
 
-const ArticlesPageContent: React.FC = () => {
+const ArticlesPage: React.FC = () => {
   const { category } = useParams<{ category?: string }>();
   const { articles, authors } = useData();
+  const { syncFromXata } = useXataStorage();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
+  
+  useEffect(() => {
+    // Try to sync articles from Xata when component mounts
+    syncFromXata().catch(err => {
+      console.error("Error syncing from Xata on articles page:", err);
+    });
+  }, [syncFromXata]);
   
   const filteredArticles = articles.filter(article => {
     // Filter by category if specified
@@ -103,14 +111,6 @@ const ArticlesPageContent: React.FC = () => {
       
       <Footer />
     </>
-  );
-};
-
-const ArticlesPage: React.FC = () => {
-  return (
-    <DataProvider>
-      <ArticlesPageContent />
-    </DataProvider>
   );
 };
 

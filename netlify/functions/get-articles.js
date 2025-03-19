@@ -27,11 +27,11 @@ exports.handler = async (event) => {
     
     // Access the articles table
     if (!xata.db || !xata.db.articles) {
-      console.log("Articles table not found in Xata database - returning empty array");
+      console.error("Articles table not found in Xata database");
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ articles: [] })
+        body: JSON.stringify({ articles: [], error: "Articles table not found" })
       };
     }
     
@@ -45,30 +45,19 @@ exports.handler = async (event) => {
       
       console.log(`Retrieved ${articles ? articles.length : 0} articles from Xata`);
       
-      if (!articles || articles.length === 0) {
-        console.log("No articles found in Xata database - returning empty array");
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ articles: [] })
-        };
-      }
-      
       // Parse the content field for each article
-      const parsedArticles = articles.map(article => {
-        try {
-          if (!article.content) {
-            console.log(`Article ${article.id} has no content - skipping`);
+      const parsedArticles = articles
+        .filter(article => article && article.content)
+        .map(article => {
+          try {
+            // The content field contains the full article object serialized as JSON
+            return JSON.parse(article.content);
+          } catch (e) {
+            console.error(`Failed to parse article content for ID ${article.id}: ${e.message}`);
             return null;
           }
-          
-          // The content field contains the full article object serialized as JSON
-          return JSON.parse(article.content);
-        } catch (e) {
-          console.log(`Failed to parse article content for ID ${article.id} - skipping`);
-          return null;
-        }
-      }).filter(Boolean); // Remove any null entries
+        })
+        .filter(Boolean); // Remove any null entries
       
       console.log(`Successfully parsed ${parsedArticles.length} articles`);
       
@@ -78,19 +67,25 @@ exports.handler = async (event) => {
         body: JSON.stringify({ articles: parsedArticles })
       };
     } catch (error) {
-      console.log("Error fetching articles - returning empty array:", error);
+      console.error("Error fetching articles:", error);
       return {
-        statusCode: 200,
+        statusCode: 500,
         headers,
-        body: JSON.stringify({ articles: [] })
+        body: JSON.stringify({ 
+          articles: [], 
+          error: `Error fetching articles: ${error.message}` 
+        })
       };
     }
   } catch (error) {
-    console.log('Failed to fetch articles - returning empty array:', error);
+    console.error('Failed to fetch articles:', error);
     return {
-      statusCode: 200,
+      statusCode: 500,
       headers,
-      body: JSON.stringify({ articles: [] })
+      body: JSON.stringify({ 
+        articles: [], 
+        error: `Failed to fetch articles: ${error.message}` 
+      })
     };
   }
 };
