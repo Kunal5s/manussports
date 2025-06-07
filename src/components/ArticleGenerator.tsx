@@ -28,7 +28,7 @@ const ArticleGenerator: React.FC = () => {
 
       if (error) {
         console.error('Edge function error:', error);
-        throw error;
+        throw new Error(error.message || 'Edge function failed');
       }
 
       if (data?.success) {
@@ -36,11 +36,8 @@ const ArticleGenerator: React.FC = () => {
         
         toast({
           title: "Success!",
-          description: `Generated ${data.articles?.length || 6} articles for ${category}`,
+          description: `Generated ${data.count || 6} articles for ${category}`,
         });
-
-        // Sync articles from database
-        await syncFromXata(false);
         
         return data;
       } else {
@@ -55,37 +52,58 @@ const ArticleGenerator: React.FC = () => {
         description: `Failed to generate articles for ${category}: ${error.message}`,
         variant: "destructive",
       });
+      throw error;
     }
   };
 
   const generateAllArticles = async () => {
     setIsGenerating(true);
+    let successCount = 0;
     
     try {
+      toast({
+        title: "Starting Generation",
+        description: "Generating articles for all categories. This will take a few minutes...",
+      });
+
       for (const category of categories) {
-        console.log(`Generating articles for ${category}...`);
-        await generateArticlesForCategory(category);
-        
-        // Add delay between categories to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        try {
+          console.log(`Generating articles for ${category}...`);
+          await generateArticlesForCategory(category);
+          successCount++;
+          
+          // Add delay between categories to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error(`Failed to generate articles for ${category}:`, error);
+          // Continue with next category even if one fails
+        }
       }
       
-      toast({
-        title: "Complete!",
-        description: "Generated articles for all categories",
-      });
-      
-      // Final sync and page refresh
-      await syncFromXata(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      if (successCount > 0) {
+        toast({
+          title: "Generation Complete!",
+          description: `Successfully generated articles for ${successCount} categories. Refreshing page...`,
+        });
+        
+        // Sync articles and refresh page
+        await syncFromXata(false);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: "Failed to generate articles for any category. Please try again.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error('Error in generateAllArticles:', error);
       toast({
         title: "Error",
-        description: "Failed to generate all articles",
+        description: "Failed to complete article generation",
         variant: "destructive",
       });
     } finally {
@@ -137,6 +155,7 @@ const ArticleGenerator: React.FC = () => {
           onClick={generateAllArticles}
           disabled={isGenerating}
           className="w-full bg-blue-600 hover:bg-blue-700"
+          size="lg"
         >
           {isGenerating ? (
             <>
@@ -144,14 +163,15 @@ const ArticleGenerator: React.FC = () => {
               Generating {currentCategory}...
             </>
           ) : (
-            'Generate All Articles (Recommended)'
+            '🚀 Generate All Articles Automatically (6 per Category)'
           )}
         </Button>
         
         {isGenerating && (
-          <div className="text-sm text-gray-600 text-center">
-            <p>This may take a few minutes. Please wait...</p>
+          <div className="text-sm text-gray-600 text-center bg-gray-50 p-4 rounded-md">
+            <p className="font-medium">⚡ AI is working its magic...</p>
             <p>Current: {currentCategory}</p>
+            <p className="text-xs mt-2">This process generates 6 unique articles per category with professional images</p>
           </div>
         )}
       </div>

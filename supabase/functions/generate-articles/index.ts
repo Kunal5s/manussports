@@ -44,9 +44,14 @@ serve(async (req) => {
     const categoryId = categoryData.id;
     console.log(`Found category ID: ${categoryId} for category: ${category}`);
 
-    // Generate 6 unique topics for the category with timestamp to ensure uniqueness
-    const timestamp = new Date().toISOString().split('T')[0];
-    const topicsPrompt = `Generate 6 unique, engaging, and current sports topics specifically about ${category}. Each topic should be exactly 10-12 words and focus on recent trends, player performances, team strategies, or current events in ${category}. Make them clickable and interesting for sports fans. Topics should be different from each other and avoid repetition. Format as a simple numbered list.`;
+    // Delete existing articles for this category first
+    await supabaseClient
+      .from('articles')
+      .delete()
+      .eq('category_id', categoryId);
+
+    // Generate 6 unique topics for the category
+    const topicsPrompt = `Generate 6 unique, engaging, and current sports topics specifically about ${category}. Each topic should be exactly 8-12 words and focus on recent trends, player performances, team strategies, or current events in ${category}. Make them clickable and interesting for sports fans. Topics should be different from each other and avoid repetition. Format as a simple numbered list.`;
 
     const topicsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -73,19 +78,19 @@ serve(async (req) => {
       const topic = topics[i];
       console.log(`Generating article ${i + 1} for topic: ${topic}`);
       
-      // Generate article content with better structure
+      // Generate article content
       const articlePrompt = `Write a comprehensive 1500-2000 word sports article about: "${topic}". 
 
       Structure the article with:
-      - Engaging introduction paragraph
+      - Engaging introduction paragraph (2-3 sentences)
       - 4-5 main sections with descriptive H2 headings
-      - Use H3 subheadings within sections
+      - Use H3 subheadings within sections where appropriate
       - Short paragraphs (2-3 sentences each)
       - Include current analysis and insights
-      - Add relevant statistics or data points
+      - Add relevant statistics or data points where possible
       - Conclude with future outlook
 
-      Format in clean HTML with proper heading tags (h2, h3, p). Make it engaging and informative for ${category} enthusiasts. Ensure the content is unique and current.`;
+      Format in clean HTML with proper heading tags (h2, h3, p). Make it engaging and informative for ${category} enthusiasts. Ensure the content is unique, current, and well-structured.`;
 
       const articleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
@@ -101,7 +106,7 @@ serve(async (req) => {
       const content = articleData.candidates[0].content.parts[0].text;
 
       // Fetch relevant image from Pexels
-      const imageQuery = `${category} sports ${topic.split(' ').slice(0, 2).join(' ')}`;
+      const imageQuery = `${category} sports ${topic.split(' ').slice(0, 3).join(' ')}`;
       console.log(`Fetching image for query: ${imageQuery}`);
       
       const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=1&orientation=landscape`, {
@@ -112,13 +117,16 @@ serve(async (req) => {
       const featuredImage = pexelsData.photos[0]?.src?.large || '';
 
       // Create unique article ID
-      const articleId = `${category.toLowerCase().replace(' ', '-')}-${Date.now()}-${i}`;
+      const articleId = `${category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${i}`;
 
-      // Extract summary from content
+      // Extract summary from content (clean HTML and take first 150 chars)
       const htmlContent = content.replace(/<[^>]*>/g, '');
       const summary = htmlContent.length > 150 ? htmlContent.substring(0, 150) + '...' : htmlContent;
 
-      const article = {
+      // Save to Supabase with proper structure
+      console.log(`Saving article to database: ${topic}`);
+      
+      const articleToSave = {
         id: articleId,
         title: topic,
         content: content,
@@ -138,24 +146,21 @@ serve(async (req) => {
         }
       };
 
-      // Save to Supabase with proper category_id
-      console.log(`Saving article to database: ${article.title}`);
-      
       const { error } = await supabaseClient
         .from('articles')
         .insert({
-          title: article.title,
-          content: JSON.stringify(article),
-          summary: article.summary,
+          title: articleToSave.title,
+          content: JSON.stringify(articleToSave),
+          summary: articleToSave.summary,
           category_id: categoryId,
-          image_url: article.featuredImage
+          image_url: articleToSave.featuredImage
         });
 
       if (error) {
         console.error('Error saving article:', error);
       } else {
-        console.log(`Successfully saved article: ${article.title}`);
-        articles.push(article);
+        console.log(`Successfully saved article: ${articleToSave.title}`);
+        articles.push(articleToSave);
       }
 
       // Add small delay between articles
@@ -167,6 +172,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true,
       articles: articles,
+      count: articles.length,
       message: `Generated ${articles.length} articles for ${category}`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

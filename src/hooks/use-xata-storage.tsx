@@ -76,7 +76,12 @@ export const useXataStorage = () => {
       const { data: articlesData, error } = await supabase
         .from('articles')
         .select(`
-          *,
+          id,
+          title,
+          summary,
+          content,
+          image_url,
+          created_at,
           categories (
             name
           )
@@ -93,9 +98,16 @@ export const useXataStorage = () => {
       // Transform Supabase data to local Article format
       const transformedArticles: Article[] = (articlesData || []).map(article => {
         try {
-          const parsedContent = typeof article.content === 'string' 
-            ? JSON.parse(article.content) 
-            : article.content;
+          // Parse the content field if it's a JSON string
+          let parsedContent = article.content;
+          if (typeof article.content === 'string') {
+            try {
+              parsedContent = JSON.parse(article.content);
+            } catch (parseError) {
+              console.log('Content is not JSON, using as-is');
+              parsedContent = { content: article.content };
+            }
+          }
           
           return {
             id: article.id,
@@ -106,7 +118,7 @@ export const useXataStorage = () => {
             authorId: 'ai-generated',
             featuredImage: article.image_url || '',
             publishedDate: article.created_at,
-            readTime: Math.ceil((parsedContent.content || '').split(' ').length / 200) || 5,
+            readTime: Math.ceil((parsedContent.content || article.content || '').split(' ').length / 200) || 5,
             views: {
               total: Math.floor(Math.random() * 1000) + 100,
               daily: [0, 0, 0, 0, 0, 0, 0],
@@ -117,7 +129,7 @@ export const useXataStorage = () => {
             }
           };
         } catch (parseError) {
-          console.error('Error parsing article content:', parseError);
+          console.error('Error transforming article:', parseError);
           return {
             id: article.id,
             title: article.title,
@@ -149,6 +161,11 @@ export const useXataStorage = () => {
       
       setLastSyncTime(new Date());
       console.log(`Successfully loaded ${transformedArticles.length} articles from Supabase`);
+      
+      // Force refresh the page to reload articles in DataContext
+      if (transformedArticles.length > 0) {
+        window.location.reload();
+      }
       
       return true;
     } catch (error) {
