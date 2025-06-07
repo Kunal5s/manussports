@@ -1,24 +1,48 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp, Users, Globe } from 'lucide-react';
+import { ArrowRight, TrendingUp, Users, Globe, RefreshCw } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
 import ArticleCard from '@/components/ArticleCard';
 import ArticleGenerator from '@/components/ArticleGenerator';
+import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useXataStorage } from '@/hooks/use-xata-storage';
 
 const HomePage: React.FC = () => {
   const { articles, authors } = useData();
-  const { syncFromXata } = useXataStorage();
+  const { syncFromXata, isSyncing } = useXataStorage();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   useEffect(() => {
-    syncFromXata().catch(err => {
-      console.error("Error syncing from Xata on homepage:", err);
-    });
+    // Load articles on component mount
+    const loadArticles = async () => {
+      try {
+        await syncFromXata(false);
+      } catch (err) {
+        console.error("Error syncing articles on homepage:", err);
+      }
+    };
+    
+    loadArticles();
   }, [syncFromXata]);
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await syncFromXata(true);
+      // Force page refresh after sync
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      console.error("Error refreshing articles:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   const sortedArticles = [...articles].sort(
     (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
@@ -81,6 +105,18 @@ const HomePage: React.FC = () => {
 
         {/* Article Generator */}
         <section className="mb-16">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Article Management</h2>
+            <Button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing || isSyncing}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${(isRefreshing || isSyncing) ? 'animate-spin' : ''}`} />
+              Refresh Articles
+            </Button>
+          </div>
           <ArticleGenerator />
         </section>
         

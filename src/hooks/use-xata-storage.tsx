@@ -70,7 +70,7 @@ export const useXataStorage = () => {
   const syncFromXata = async (showToast = false): Promise<boolean> => {
     try {
       setIsSyncing(true);
-      console.log("Attempting to sync articles from Supabase");
+      console.log("Syncing articles from Supabase...");
       
       // Fetch articles with category information
       const { data: articlesData, error } = await supabase
@@ -87,6 +87,8 @@ export const useXataStorage = () => {
         console.error("Error fetching articles:", error);
         return false;
       }
+      
+      console.log(`Fetched ${articlesData?.length || 0} articles from Supabase`);
       
       // Transform Supabase data to local Article format
       const transformedArticles: Article[] = (articlesData || []).map(article => {
@@ -141,16 +143,19 @@ export const useXataStorage = () => {
       // Update local storage with articles from Supabase
       localStorage.setItem('manusSportsArticles', JSON.stringify(transformedArticles));
       
-      if (showToast) {
-        toast.success("Articles synced successfully");
+      if (showToast && transformedArticles.length > 0) {
+        toast.success(`Loaded ${transformedArticles.length} articles successfully`);
       }
       
       setLastSyncTime(new Date());
-      console.log(`${transformedArticles.length} articles loaded from Supabase.`);
+      console.log(`Successfully loaded ${transformedArticles.length} articles from Supabase`);
       
       return true;
     } catch (error) {
       console.error("Error syncing from Supabase:", error);
+      if (showToast) {
+        toast.error("Failed to sync articles");
+      }
       return false;
     } finally {
       setIsSyncing(false);
