@@ -27,6 +27,21 @@ serve(async (req) => {
       throw new Error('Missing API keys');
     }
 
+    // First, get the category UUID from the database
+    const { data: categoryData, error: categoryError } = await supabaseClient
+      .from('categories')
+      .select('id')
+      .eq('name', category)
+      .single();
+
+    if (categoryError || !categoryData) {
+      console.error('Category not found:', category, categoryError);
+      throw new Error(`Category "${category}" not found in database`);
+    }
+
+    const categoryId = categoryData.id;
+    console.log(`Found category ID: ${categoryId} for category: ${category}`);
+
     // Generate 6 unique topics for the category
     const topicsPrompt = `Generate 6 unique, trending, and engaging sports topics related to ${category}. Each topic should be exactly 12 words. Topics should be current, interesting, and avoid duplicates. Format as a simple list, one topic per line.`;
 
@@ -101,19 +116,21 @@ serve(async (req) => {
         views: { total: Math.floor(Math.random() * 1000) + 100 }
       };
 
-      // Save to Supabase
+      // Save to Supabase with proper category_id
       const { error } = await supabaseClient
         .from('articles')
         .insert({
           title: article.title,
           content: JSON.stringify(article),
           summary: article.summary,
-          category_id: category,
+          category_id: categoryId, // Use the actual UUID from categories table
           image_url: article.featuredImage
         });
 
       if (error) {
         console.error('Error saving article:', error);
+      } else {
+        console.log(`Successfully saved article: ${article.title}`);
       }
 
       articles.push(article);
