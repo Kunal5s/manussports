@@ -50,8 +50,15 @@ serve(async (req) => {
       .delete()
       .eq('category_id', categoryId);
 
-    // Generate 6 unique topics for the category
-    const topicsPrompt = `Generate 6 unique, engaging, and current sports topics specifically about ${category}. Each topic should be exactly 8-12 words and focus on recent trends, player performances, team strategies, or current events in ${category}. Make them clickable and interesting for sports fans. Topics should be different from each other and avoid repetition. Format as a simple numbered list.`;
+    // Generate 6 unique trending topics for the category (exactly 12 words each)
+    const topicsPrompt = `Generate 6 unique, trending, and engaging sports topics specifically about ${category}. Each topic must be EXACTLY 12 words long - no more, no less. Focus on current trends, breaking news, player performances, team strategies, or recent events in ${category}. Make them clickable and exciting for sports fans. Topics should be completely different from each other and reflect the latest developments in ${category}. Format as a simple numbered list.
+
+Examples:
+1. Manchester United's New Signing Strategy Could Transform Their Championship Hopes This Season
+2. Tennis Grand Slam Tournament Format Changes Sparking Heated Debates Among Professional Players
+3. NBA Draft Lottery Results Reshape Team Strategies for Upcoming Free Agency Period
+
+Now generate 6 topics for ${category} following this exact 12-word format.`;
 
     const topicsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -78,19 +85,40 @@ serve(async (req) => {
       const topic = topics[i];
       console.log(`Generating article ${i + 1} for topic: ${topic}`);
       
-      // Generate article content
-      const articlePrompt = `Write a comprehensive 1500-2000 word sports article about: "${topic}". 
+      // Generate comprehensive 2000-word article content with proper H1-H6 structure
+      const articlePrompt = `Write a comprehensive 2000-word professional sports article about: "${topic}". 
 
-      Structure the article with:
-      - Engaging introduction paragraph (2-3 sentences)
-      - 4-5 main sections with descriptive H2 headings
-      - Use H3 subheadings within sections where appropriate
-      - Short paragraphs (2-3 sentences each)
-      - Include current analysis and insights
-      - Add relevant statistics or data points where possible
-      - Conclude with future outlook
+      REQUIREMENTS:
+      - Target exactly 2000 words
+      - Use proper HTML structure with H1, H2, H3, H4, H5, H6 headings
+      - Start with an engaging H1 title
+      - Create 6-8 main sections with H2 headings
+      - Use H3, H4, H5, H6 for subsections where appropriate
+      - Write in professional sports journalism style
+      - Include current analysis, statistics, and expert insights
+      - Make paragraphs 2-3 sentences each for readability
+      - Add quotes from experts or players (realistic but not real quotes)
+      - Include future outlook and predictions
+      - Use trending keywords related to ${category}
 
-      Format in clean HTML with proper heading tags (h2, h3, p). Make it engaging and informative for ${category} enthusiasts. Ensure the content is unique, current, and well-structured.`;
+      STRUCTURE:
+      <h1>Main Title</h1>
+      <p>Engaging introduction paragraph...</p>
+      
+      <h2>Section 1 Title</h2>
+      <p>Content...</p>
+      <h3>Subsection 1.1</h3>
+      <p>Content...</p>
+      
+      <h2>Section 2 Title</h2>
+      <p>Content...</p>
+      <h3>Subsection 2.1</h3>
+      <h4>Sub-subsection 2.1.1</h4>
+      <p>Content...</p>
+      
+      Continue this pattern to reach 2000 words with proper heading hierarchy.
+
+      Make it engaging, informative, and trending for ${category} enthusiasts.`;
 
       const articleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
@@ -105,23 +133,27 @@ serve(async (req) => {
       const articleData = await articleResponse.json();
       const content = articleData.candidates[0].content.parts[0].text;
 
-      // Fetch relevant image from Pexels
-      const imageQuery = `${category} sports ${topic.split(' ').slice(0, 3).join(' ')}`;
-      console.log(`Fetching image for query: ${imageQuery}`);
+      // Fetch high-quality professional sports image from Pexels
+      const imageQuery = `${category} sports professional action`;
+      console.log(`Fetching professional image for query: ${imageQuery}`);
       
-      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=1&orientation=landscape`, {
+      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=10&orientation=landscape&size=large`, {
         headers: { 'Authorization': pexelsApiKey }
       });
 
       const pexelsData = await pexelsResponse.json();
-      const featuredImage = pexelsData.photos[0]?.src?.large || '';
+      const featuredImage = pexelsData.photos[Math.floor(Math.random() * pexelsData.photos.length)]?.src?.large || '';
 
       // Create unique article ID
       const articleId = `${category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${i}`;
 
       // Extract summary from content (clean HTML and take first 150 chars)
-      const htmlContent = content.replace(/<[^>]*>/g, '');
+      const htmlContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       const summary = htmlContent.length > 150 ? htmlContent.substring(0, 150) + '...' : htmlContent;
+
+      // Calculate actual word count for accurate read time
+      const wordCount = htmlContent.split(' ').filter(word => word.length > 0).length;
+      const readTime = Math.ceil(wordCount / 250); // 250 words per minute reading speed
 
       // Save to Supabase with proper structure
       console.log(`Saving article to database: ${topic}`);
@@ -135,7 +167,7 @@ serve(async (req) => {
         featuredImage: featuredImage,
         authorId: 'ai-generated',
         publishedDate: new Date().toISOString(),
-        readTime: Math.ceil(content.split(' ').length / 200),
+        readTime: readTime,
         views: { 
           total: Math.floor(Math.random() * 500) + 100,
           daily: [0, 0, 0, 0, 0, 0, 0],
@@ -163,8 +195,8 @@ serve(async (req) => {
         articles.push(articleToSave);
       }
 
-      // Add small delay between articles
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add delay between articles to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     console.log(`Successfully generated ${articles.length} articles for ${category}`);
@@ -173,7 +205,7 @@ serve(async (req) => {
       success: true,
       articles: articles,
       count: articles.length,
-      message: `Generated ${articles.length} articles for ${category}`
+      message: `Generated ${articles.length} trending articles for ${category} with 12-word topics and 2000-word content`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

@@ -99,26 +99,31 @@ export const useXataStorage = () => {
       const transformedArticles: Article[] = (articlesData || []).map(article => {
         try {
           // Parse the content field if it's a JSON string
-          let parsedContent = article.content;
+          let parsedContent;
+          let articleContent = '';
+          
           if (typeof article.content === 'string') {
             try {
               parsedContent = JSON.parse(article.content);
+              articleContent = parsedContent.content || article.content;
             } catch (parseError) {
               console.log('Content is not JSON, using as-is');
-              parsedContent = { content: article.content };
+              articleContent = article.content;
             }
+          } else {
+            articleContent = article.content || '';
           }
           
           return {
             id: article.id,
             title: article.title,
             summary: article.summary,
-            content: parsedContent.content || article.content,
+            content: articleContent,
             category: (article.categories as any)?.name || 'General',
             authorId: 'ai-generated',
             featuredImage: article.image_url || '',
             publishedDate: article.created_at,
-            readTime: Math.ceil((parsedContent.content || article.content || '').split(' ').length / 200) || 5,
+            readTime: Math.ceil(articleContent.split(' ').length / 200) || 5,
             views: {
               total: Math.floor(Math.random() * 1000) + 100,
               daily: [0, 0, 0, 0, 0, 0, 0],

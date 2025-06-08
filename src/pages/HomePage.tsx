@@ -103,10 +103,10 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Article Generator */}
+        {/* AI Article Generator */}
         <section className="mb-16">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Article Management</h2>
+            <h2 className="text-2xl font-bold">AI Article Generator</h2>
             <Button 
               onClick={handleRefresh} 
               disabled={isRefreshing || isSyncing}
@@ -140,7 +140,7 @@ const HomePage: React.FC = () => {
           </div>
         </section>
         
-        {/* Category Sections */}
+        {/* Category Sections - Grid Format */}
         {Object.entries(categoryArticles).map(([category, articles]) => (
           <section key={category} className="mb-16">
             <div className="flex justify-between items-center mb-6">
