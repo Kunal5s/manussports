@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp, Users, Globe, RefreshCw, Clock } from 'lucide-react';
+import { ArrowRight, TrendingUp, Users, Globe, RefreshCw, Clock, Zap } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
   
   const generateAllArticles = async () => {
     setIsGenerating(true);
-    setGenerationProgress('Starting generation...');
+    setGenerationProgress('🚀 Starting AI generation...');
     let successCount = 0;
     
     try {
@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
       // Generate articles for all categories simultaneously for speed
       const promises = categories.map(async (category, index) => {
         try {
-          setGenerationProgress(`Generating ${category} articles...`);
+          setGenerationProgress(`⚡ Generating ${category} articles...`);
           console.log(`📝 Generating articles for ${category}...`);
           
           const { data, error } = await supabase.functions.invoke('generate-articles', {
@@ -84,22 +84,26 @@ const HomePage: React.FC = () => {
         toast.success(`🎉 Successfully generated articles for ${successCount}/${categories.length} categories!`);
         
         // Sync and refresh
-        setGenerationProgress('Loading articles...');
+        setGenerationProgress('📥 Loading articles...');
         await syncFromXata(false);
         
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else {
-        toast.error("❌ Failed to generate any articles");
+        toast.error("❌ Failed to generate any articles. Please check your API keys.");
+        setGenerationProgress('❌ Generation failed - check API keys');
       }
       
     } catch (error) {
       console.error('💥 Error in article generation:', error);
       toast.error("Failed to generate articles");
+      setGenerationProgress('❌ Generation error occurred');
     } finally {
-      setIsGenerating(false);
-      setGenerationProgress('');
+      setTimeout(() => {
+        setIsGenerating(false);
+        setGenerationProgress('');
+      }, 3000);
     }
   };
   
@@ -133,8 +137,7 @@ const HomePage: React.FC = () => {
   };
   
   const shouldShowGeneration = () => {
-    const today = new Date().toDateString();
-    return lastGenerated !== today && articles.length === 0;
+    return articles.length === 0 || !lastGenerated || lastGenerated !== new Date().toDateString();
   };
   
   return (
@@ -180,41 +183,61 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Generation Status */}
-        {isGenerating && (
-          <section className="mb-16">
+        {/* Generation Status & Controls */}
+        <section className="mb-16">
+          {isGenerating ? (
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-8 text-center">
               <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <h3 className="text-xl font-bold text-blue-900 mb-2">⚡ Fast AI Article Generation</h3>
+              <h3 className="text-xl font-bold text-blue-900 mb-2">⚡ AI Article Generation in Progress</h3>
               <p className="text-blue-700 mb-2">{generationProgress}</p>
-              <p className="text-sm text-blue-600">Creating unique content with professional images (10 seconds)</p>
+              <p className="text-sm text-blue-600">Creating unique content with professional images (10-15 seconds)</p>
             </div>
-          </section>
-        )}
-
-        {/* Quick Actions */}
-        <section className="mb-12">
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {shouldShowGeneration() && (
-              <Button 
-                onClick={generateAllArticles} 
-                disabled={isGenerating}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2"
-              >
-                <Clock className="w-5 h-5" />
-                Generate Fresh Articles (10s)
-              </Button>
-            )}
-            <Button 
-              onClick={handleRefresh} 
-              disabled={isSyncing}
-              variant="outline"
-              className="flex items-center gap-2 px-6 py-3"
-            >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              Refresh Articles
-            </Button>
-          </div>
+          ) : (
+            <div className="text-center">
+              {shouldShowGeneration() && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-bold text-orange-900 mb-2">🚀 Ready to Generate Fresh Articles?</h3>
+                  <p className="text-orange-700 mb-4">
+                    {articles.length === 0 ? 
+                      "No articles found. Generate 36 unique AI articles across all sports categories!" :
+                      "Generate today's fresh content with unique topics and professional images."
+                    }
+                  </p>
+                  <Button 
+                    onClick={generateAllArticles} 
+                    disabled={isGenerating}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 mx-auto"
+                  >
+                    <Zap className="w-5 h-5" />
+                    Generate 36 AI Articles (10 seconds)
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button 
+                  onClick={handleRefresh} 
+                  disabled={isSyncing}
+                  variant="outline"
+                  className="flex items-center gap-2 px-6 py-3"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  Refresh Articles
+                </Button>
+                
+                {!shouldShowGeneration() && (
+                  <Button 
+                    onClick={generateAllArticles} 
+                    disabled={isGenerating}
+                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
+                  >
+                    <Clock className="w-4 h-4" />
+                    Generate More Articles
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </section>
         
         {/* Featured Articles */}
@@ -258,8 +281,8 @@ const HomePage: React.FC = () => {
                 ))
               ) : (
                 <div className="col-span-3 text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500 text-lg">🤖 Generating {category} articles...</p>
-                  <p className="text-gray-400 text-sm mt-2">This will take about 10 seconds</p>
+                  <p className="text-gray-500 text-lg">🤖 Click "Generate Articles" to create {category} content</p>
+                  <p className="text-gray-400 text-sm mt-2">AI will generate 6 unique articles with professional images</p>
                 </div>
               )}
             </div>

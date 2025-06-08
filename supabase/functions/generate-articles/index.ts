@@ -67,7 +67,16 @@ serve(async (req) => {
       })
     });
 
+    if (!topicsResponse.ok) {
+      throw new Error(`Gemini API error: ${topicsResponse.status}`);
+    }
+
     const topicsData = await topicsResponse.json();
+    
+    if (!topicsData.candidates || !topicsData.candidates[0] || !topicsData.candidates[0].content) {
+      throw new Error('Invalid response from Gemini API for topics');
+    }
+
     const topicsText = topicsData.candidates[0].content.parts[0].text;
     const topics = topicsText.split('\n')
       .filter((topic: string) => topic.trim())
@@ -76,15 +85,36 @@ serve(async (req) => {
 
     console.log(`📝 Generated ${topics.length} topics in ${Date.now() - startTime}ms`);
 
+    if (topics.length === 0) {
+      throw new Error('No topics generated');
+    }
+
     // Fetch images in parallel for speed
     const imagePromises = topics.map(async (topic, index) => {
-      const imageQuery = `${category} sports action professional`;
-      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=10&orientation=landscape`, {
-        headers: { 'Authorization': pexelsApiKey }
-      });
-      const pexelsData = await pexelsResponse.json();
-      const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 10));
-      return pexelsData.photos[randomIndex]?.src?.large || '';
+      try {
+        const imageQuery = `${category} sports action professional`;
+        const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=10&orientation=landscape`, {
+          headers: { 'Authorization': pexelsApiKey }
+        });
+        
+        if (!pexelsResponse.ok) {
+          console.log(`Pexels API error for image ${index}: ${pexelsResponse.status}`);
+          return '';
+        }
+        
+        const pexelsData = await pexelsResponse.json();
+        
+        if (!pexelsData.photos || pexelsData.photos.length === 0) {
+          console.log(`No photos found for ${imageQuery}`);
+          return '';
+        }
+        
+        const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 10));
+        return pexelsData.photos[randomIndex]?.src?.large || '';
+      } catch (error) {
+        console.error(`Error fetching image for topic ${index}:`, error);
+        return '';
+      }
     });
 
     const images = await Promise.all(imagePromises);
@@ -92,7 +122,8 @@ serve(async (req) => {
 
     // Generate articles in parallel for maximum speed
     const articlePromises = topics.map(async (topic, index) => {
-      const articlePrompt = `Write a 1500-word professional ${category} article about: "${topic}".
+      try {
+        const articlePrompt = `Write a 1500-word professional ${category} article about: "${topic}".
 
 Structure with HTML:
 <h1>${topic}</h1>
@@ -110,68 +141,82 @@ Structure with HTML:
 
 Make it professional, engaging, and trending.`;
 
-      const articleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: articlePrompt }]
-          }],
-          generationConfig: {
-            maxOutputTokens: 2000,
-            temperature: 0.7
-          }
-        })
-      });
-
-      const articleData = await articleResponse.json();
-      const content = articleData.candidates[0].content.parts[0].text;
-
-      // Create article data
-      const articleId = `${category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${index}`;
-      const htmlContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      const summary = htmlContent.length > 150 ? htmlContent.substring(0, 150) + '...' : htmlContent;
-      const wordCount = htmlContent.split(' ').filter(word => word.length > 0).length;
-      const readTime = Math.ceil(wordCount / 250);
-
-      const articleToSave = {
-        id: articleId,
-        title: topic,
-        content: content,
-        summary: summary,
-        category: category,
-        featuredImage: images[index] || '',
-        authorId: 'ai-generated',
-        publishedDate: new Date().toISOString(),
-        readTime: readTime,
-        views: { 
-          total: Math.floor(Math.random() * 500) + 100,
-          daily: [0, 0, 0, 0, 0, 0, 0],
-          weekly: [0, 0, 0, 0, 0],
-          monthly: [0, 0, 0, 0, 0, 0],
-          sixMonths: [0, 0, 0, 0, 0, 0],
-          yearly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        }
-      };
-
-      // Save to database
-      const { error } = await supabaseClient
-        .from('articles')
-        .insert({
-          title: articleToSave.title,
-          content: JSON.stringify(articleToSave),
-          summary: articleToSave.summary,
-          category_id: categoryId,
-          image_url: articleToSave.featuredImage,
-          is_trending: index < 2
+        const articleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: articlePrompt }]
+            }],
+            generationConfig: {
+              maxOutputTokens: 2000,
+              temperature: 0.7
+            }
+          })
         });
 
-      if (error) {
-        console.error('❌ Error saving article:', error);
+        if (!articleResponse.ok) {
+          throw new Error(`Article generation failed for topic ${index}: ${articleResponse.status}`);
+        }
+
+        const articleData = await articleResponse.json();
+        
+        if (!articleData.candidates || !articleData.candidates[0] || !articleData.candidates[0].content) {
+          throw new Error(`Invalid article response for topic ${index}`);
+        }
+
+        const content = articleData.candidates[0].content.parts[0].text;
+
+        // Create article data
+        const articleId = `${category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${index}`;
+        const htmlContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        const summary = htmlContent.length > 150 ? htmlContent.substring(0, 150) + '...' : htmlContent;
+        const wordCount = htmlContent.split(' ').filter(word => word.length > 0).length;
+        const readTime = Math.ceil(wordCount / 250);
+
+        const articleToSave = {
+          id: articleId,
+          title: topic,
+          content: content,
+          summary: summary,
+          category: category,
+          featuredImage: images[index] || '',
+          authorId: 'ai-generated',
+          publishedDate: new Date().toISOString(),
+          readTime: readTime,
+          views: { 
+            total: Math.floor(Math.random() * 500) + 100,
+            daily: [0, 0, 0, 0, 0, 0, 0],
+            weekly: [0, 0, 0, 0, 0],
+            monthly: [0, 0, 0, 0, 0, 0],
+            sixMonths: [0, 0, 0, 0, 0, 0],
+            yearly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+          }
+        };
+
+        // Save to database
+        const { error } = await supabaseClient
+          .from('articles')
+          .insert({
+            title: articleToSave.title,
+            content: JSON.stringify(articleToSave),
+            summary: articleToSave.summary,
+            category_id: categoryId,
+            image_url: articleToSave.featuredImage,
+            is_trending: index < 2
+          });
+
+        if (error) {
+          console.error('❌ Error saving article:', error);
+          throw error;
+        }
+
+        console.log(`✅ Successfully saved article: ${topic}`);
+        return articleToSave;
+      } catch (error) {
+        console.error(`❌ Error generating article ${index}:`, error);
         throw error;
       }
-
-      return articleToSave;
     });
 
     // Wait for all articles to be generated and saved
