@@ -27,7 +27,7 @@ serve(async (req) => {
       throw new Error('Missing API keys');
     }
 
-    console.log(`Starting article generation for category: ${category}`);
+    console.log(`Starting automatic article generation for category: ${category}`);
 
     // Get the category UUID from the database
     const { data: categoryData, error: categoryError } = await supabaseClient
@@ -50,15 +50,15 @@ serve(async (req) => {
       .delete()
       .eq('category_id', categoryId);
 
-    // Generate 6 unique trending topics for the category (exactly 12 words each)
-    const topicsPrompt = `Generate 6 unique, trending, and engaging sports topics specifically about ${category}. Each topic must be EXACTLY 12 words long - no more, no less. Focus on current trends, breaking news, player performances, team strategies, or recent events in ${category}. Make them clickable and exciting for sports fans. Topics should be completely different from each other and reflect the latest developments in ${category}. Format as a simple numbered list.
+    // Generate 6 unique trending topics for the category
+    const topicsPrompt = `Generate 6 unique, trending, and highly engaging sports article titles specifically about ${category}. Each title must be EXACTLY 12 words long - no more, no less. Focus on current events, breaking news, player performances, team strategies, recent matches, transfers, or controversies in ${category}. Make them clickable and exciting for sports fans. Topics should be completely different from each other and reflect the latest developments in ${category}. Format as a simple numbered list.
 
-Examples:
+Examples for reference:
 1. Manchester United's New Signing Strategy Could Transform Their Championship Hopes This Season
-2. Tennis Grand Slam Tournament Format Changes Sparking Heated Debates Among Professional Players
+2. Tennis Grand Slam Tournament Format Changes Sparking Heated Debates Among Professional Players  
 3. NBA Draft Lottery Results Reshape Team Strategies for Upcoming Free Agency Period
 
-Now generate 6 topics for ${category} following this exact 12-word format.`;
+Now generate 6 unique ${category} topics following this exact 12-word format:`;
 
     const topicsResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
@@ -83,9 +83,9 @@ Now generate 6 topics for ${category} following this exact 12-word format.`;
 
     for (let i = 0; i < topics.length; i++) {
       const topic = topics[i];
-      console.log(`Generating article ${i + 1} for topic: ${topic}`);
+      console.log(`Generating article ${i + 1}/6 for topic: ${topic}`);
       
-      // Generate comprehensive 2000-word article content with proper H1-H6 structure
+      // Generate comprehensive 2000-word article content
       const articlePrompt = `Write a comprehensive 2000-word professional sports article about: "${topic}". 
 
       REQUIREMENTS:
@@ -97,26 +97,38 @@ Now generate 6 topics for ${category} following this exact 12-word format.`;
       - Write in professional sports journalism style
       - Include current analysis, statistics, and expert insights
       - Make paragraphs 2-3 sentences each for readability
-      - Add quotes from experts or players (realistic but not real quotes)
+      - Add realistic quotes from experts or players
       - Include future outlook and predictions
       - Use trending keywords related to ${category}
 
-      STRUCTURE:
-      <h1>Main Title</h1>
+      STRUCTURE EXAMPLE:
+      <h1>Main Title About ${topic}</h1>
       <p>Engaging introduction paragraph...</p>
       
-      <h2>Section 1 Title</h2>
+      <h2>Current Situation Analysis</h2>
       <p>Content...</p>
-      <h3>Subsection 1.1</h3>
-      <p>Content...</p>
-      
-      <h2>Section 2 Title</h2>
-      <p>Content...</p>
-      <h3>Subsection 2.1</h3>
-      <h4>Sub-subsection 2.1.1</h4>
+      <h3>Key Performance Metrics</h3>
       <p>Content...</p>
       
-      Continue this pattern to reach 2000 words with proper heading hierarchy.
+      <h2>Impact on ${category}</h2>
+      <p>Content...</p>
+      <h3>Short-term Effects</h3>
+      <h4>Player Performance Changes</h4>
+      <p>Content...</p>
+      
+      <h2>Expert Analysis</h2>
+      <p>Content with quotes...</p>
+      
+      <h2>Statistical Breakdown</h2>
+      <p>Content...</p>
+      
+      <h2>Future Predictions</h2>
+      <p>Content...</p>
+      <h3>Season Outlook</h3>
+      <p>Content...</p>
+      
+      <h2>Conclusion</h2>
+      <p>Final thoughts...</p>
 
       Make it engaging, informative, and trending for ${category} enthusiasts.`;
 
@@ -134,15 +146,16 @@ Now generate 6 topics for ${category} following this exact 12-word format.`;
       const content = articleData.candidates[0].content.parts[0].text;
 
       // Fetch high-quality professional sports image from Pexels
-      const imageQuery = `${category} sports professional action`;
+      const imageQuery = `${category} sports professional action player`;
       console.log(`Fetching professional image for query: ${imageQuery}`);
       
-      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=10&orientation=landscape&size=large`, {
+      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageQuery)}&per_page=15&orientation=landscape&size=large`, {
         headers: { 'Authorization': pexelsApiKey }
       });
 
       const pexelsData = await pexelsResponse.json();
-      const featuredImage = pexelsData.photos[Math.floor(Math.random() * pexelsData.photos.length)]?.src?.large || '';
+      const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 15));
+      const featuredImage = pexelsData.photos[randomIndex]?.src?.large || '';
 
       // Create unique article ID
       const articleId = `${category.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${i}`;
@@ -185,7 +198,8 @@ Now generate 6 topics for ${category} following this exact 12-word format.`;
           content: JSON.stringify(articleToSave),
           summary: articleToSave.summary,
           category_id: categoryId,
-          image_url: articleToSave.featuredImage
+          image_url: articleToSave.featuredImage,
+          is_trending: i < 2 // Mark first 2 articles as trending
         });
 
       if (error) {
@@ -205,7 +219,7 @@ Now generate 6 topics for ${category} following this exact 12-word format.`;
       success: true,
       articles: articles,
       count: articles.length,
-      message: `Generated ${articles.length} trending articles for ${category} with 12-word topics and 2000-word content`
+      message: `Automatically generated ${articles.length} trending articles for ${category} with professional images`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

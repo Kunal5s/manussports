@@ -6,41 +6,97 @@ import NavBar from '@/components/NavBar';
 import Footer from '@/components/Footer';
 import CategoryNav from '@/components/CategoryNav';
 import ArticleCard from '@/components/ArticleCard';
-import ArticleGenerator from '@/components/ArticleGenerator';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useXataStorage } from '@/hooks/use-xata-storage';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const HomePage: React.FC = () => {
   const { articles, authors } = useData();
   const { syncFromXata, isSyncing } = useXataStorage();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGeneratedToday, setHasGeneratedToday] = useState(false);
+  
+  const categories = ['Football', 'Basketball', 'Cricket', 'Tennis', 'Athletics', 'Formula 1'];
   
   useEffect(() => {
-    // Load articles on component mount
-    const loadArticles = async () => {
-      try {
+    // Check if articles were generated today
+    const checkAndGenerateArticles = async () => {
+      const lastGenerated = localStorage.getItem('lastArticleGeneration');
+      const today = new Date().toDateString();
+      
+      if (lastGenerated !== today && articles.length === 0) {
+        await generateAllArticles();
+        localStorage.setItem('lastArticleGeneration', today);
+        setHasGeneratedToday(true);
+      } else {
+        // Load existing articles
         await syncFromXata(false);
-      } catch (err) {
-        console.error("Error syncing articles on homepage:", err);
       }
     };
     
-    loadArticles();
-  }, [syncFromXata]);
+    checkAndGenerateArticles();
+  }, []);
+  
+  const generateAllArticles = async () => {
+    setIsGenerating(true);
+    let successCount = 0;
+    
+    try {
+      console.log("Starting automatic article generation for all categories...");
+      
+      for (const category of categories) {
+        try {
+          console.log(`Generating articles for ${category}...`);
+          
+          const { data, error } = await supabase.functions.invoke('generate-articles', {
+            body: { category }
+          });
+
+          if (error) {
+            console.error('Edge function error:', error);
+            continue;
+          }
+
+          if (data?.success) {
+            successCount++;
+            console.log(`Generated ${data.count || 6} articles for ${category}`);
+          }
+          
+          // Add delay between categories to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch (error) {
+          console.error(`Failed to generate articles for ${category}:`, error);
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Successfully generated articles for ${successCount} categories!`);
+        
+        // Sync articles and refresh page
+        await syncFromXata(false);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+      
+    } catch (error) {
+      console.error('Error in automatic article generation:', error);
+      toast.error("Failed to generate articles automatically");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     try {
       await syncFromXata(true);
-      // Force page refresh after sync
       setTimeout(() => {
         window.location.reload();
       }, 1000);
     } catch (err) {
       console.error("Error refreshing articles:", err);
-    } finally {
-      setIsRefreshing(false);
     }
   };
   
@@ -103,21 +159,30 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* AI Article Generator */}
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">AI Article Generator</h2>
+        {/* Auto Generation Status */}
+        {isGenerating && (
+          <section className="mb-16">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-blue-900 mb-2">🚀 AI is generating fresh sports articles...</h3>
+              <p className="text-blue-700">Creating unique content for all sports categories with professional images</p>
+            </div>
+          </section>
+        )}
+
+        {/* Refresh Button */}
+        <section className="mb-8">
+          <div className="flex justify-center">
             <Button 
               onClick={handleRefresh} 
-              disabled={isRefreshing || isSyncing}
+              disabled={isSyncing}
               variant="outline"
               className="flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${(isRefreshing || isSyncing) ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
               Refresh Articles
             </Button>
           </div>
-          <ArticleGenerator />
         </section>
         
         {/* Featured Articles */}
@@ -134,7 +199,7 @@ const HomePage: React.FC = () => {
               ))
             ) : (
               <div className="col-span-3 text-center py-8">
-                <p className="text-gray-500">No featured articles yet. Use the generator above to create some!</p>
+                <p className="text-gray-500">Generating featured articles...</p>
               </div>
             )}
           </div>
@@ -162,7 +227,7 @@ const HomePage: React.FC = () => {
                 ))
               ) : (
                 <div className="col-span-3 text-center py-8">
-                  <p className="text-gray-500">No {category} articles yet</p>
+                  <p className="text-gray-500">Generating {category} articles...</p>
                 </div>
               )}
             </div>
@@ -190,7 +255,7 @@ const HomePage: React.FC = () => {
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-orange-600 mb-2">24/7</div>
-                <div className="text-gray-600">Live Updates</div>
+                <div className="text-gray-600">Auto Updates</div>
               </div>
             </div>
           </div>
